@@ -242,7 +242,7 @@ describe("AiCommandBar", () => {
 
     expect(screen.queryByText("AI suggestion ready")).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "AI command" }).closest(".ai-command-panel")).not.toBeInTheDocument();
-    expect(commandBox).toHaveClass("min-h-21", "rounded-lg", "border", "border-(--accent)");
+    expect(commandBox).toHaveClass("min-h-21", "rounded-lg", "border", "border-(--ai-command-expanded-border)");
     expect(commandBox).toHaveClass("shadow-(--ai-command-expanded-shadow)");
     expect(screen.queryByText("AI toolkit")).not.toBeInTheDocument();
     expect(screen.queryByText("Original")).not.toBeInTheDocument();
@@ -351,7 +351,7 @@ describe("AiCommandBar", () => {
     expect(input).toHaveAttribute("readonly");
     expect(input).toHaveAttribute("aria-busy", "true");
     expect(status).toHaveTextContent(/^正在思考$/);
-    expect(commandBox).toHaveClass("min-h-21", "rounded-lg", "border-(--accent)");
+    expect(commandBox).toHaveClass("min-h-21", "rounded-lg", "border-(--ai-command-expanded-border)");
     expect(commandBox).not.toHaveClass("h-14", "rounded-xl");
   });
 
@@ -600,7 +600,7 @@ describe("AiCommandBar", () => {
     expect(status).toHaveTextContent("润色中……");
     expect(screen.getByText("润色中……")).toHaveClass("ai-command-inline-loading-text");
     expect(commandBox).toHaveClass("h-14", "rounded-xl", "border-(--border-default)");
-    expect(commandBox).not.toHaveClass("min-h-21", "border-(--accent)");
+    expect(commandBox).not.toHaveClass("min-h-21", "border-(--ai-command-expanded-border)");
     expect(screen.queryByRole("combobox", { name: "AI 模型" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "中断 AI 命令" })).toBeInTheDocument();
   });
