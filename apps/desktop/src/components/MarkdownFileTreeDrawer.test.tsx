@@ -115,7 +115,10 @@ describe("MarkdownFileTreeDrawer", () => {
       />
     );
 
-    expect(container.querySelector(".markdown-file-tree-resizer")).toHaveClass("top-10", "bottom-0");
+    const resizeHandle = container.querySelector(".markdown-file-tree-resizer");
+
+    expect(resizeHandle).toHaveClass("top-10", "bottom-0");
+    expect(container.querySelector(".markdown-file-tree-resizer-indicator")).not.toBeInTheDocument();
   });
 
   it("keeps the Windows sidebar toggle reachable when the drawer is collapsed", () => {
