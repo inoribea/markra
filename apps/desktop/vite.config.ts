@@ -83,14 +83,16 @@ export default defineConfig(({ mode }) => ({
   define: {
     __MARKRA_DEBUG__: JSON.stringify(mode !== "production")
   },
-  resolve: {
-    alias: [
-      {
-        find: /^node:(?:fs|os|path)$/,
-        replacement: browserNodeStubPath
-      }
-    ]
-  },
+  resolve: mode === "test"
+    ? undefined
+    : {
+        alias: [
+          {
+            find: /^node:(?:fs|os|path)$/,
+            replacement: browserNodeStubPath
+          }
+        ]
+      },
   plugins: [react(), tailwindcss(), ...(mode === "production" ? [stripDebugPlugin()] : [])],
   build: {
     chunkSizeWarningLimit: chunkSizeWarningLimitKb,
