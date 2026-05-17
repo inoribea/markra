@@ -14,6 +14,7 @@ import {
   listNativeMarkdownFilesForPath,
   openNativeMarkdownFolder,
   renameNativeMarkdownTreeFile,
+  watchNativeMarkdownTree,
   type NativeMarkdownFolderFile
 } from "../lib/tauri";
 import { clampNumber, folderNameFromDocumentPath, pathNameFromPath } from "@markra/shared";
@@ -217,6 +218,31 @@ export function useMarkdownFileTree({ onWorkspaceSessionChange }: UseMarkdownFil
       active = false;
     };
   }, [sourcePath]);
+
+  useEffect(() => {
+    if (!sourcePath) return;
+
+    let active = true;
+    let unwatch: (() => unknown) | null = null;
+
+    watchNativeMarkdownTree(sourcePath, async () => {
+      if (!active) return;
+
+      await refresh(sourcePath);
+    }).then((stopWatching) => {
+      if (!active) {
+        stopWatching();
+        return;
+      }
+
+      unwatch = stopWatching;
+    }).catch(() => {});
+
+    return () => {
+      active = false;
+      unwatch?.();
+    };
+  }, [refresh, sourcePath]);
 
   return {
     createFile,
