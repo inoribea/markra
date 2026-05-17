@@ -11,6 +11,21 @@ describe("editor stylesheet", () => {
     expect(styles).toContain(".markdown-paper tbody tr:nth-child(even)");
   });
 
+  it("uses app-themed custom scrollbars across scroll containers", () => {
+    const styles = readFileSync(`${process.cwd()}/src/styles.css`, "utf8");
+
+    expect(styles).toContain("--scrollbar-thumb: color-mix");
+    expect(styles).toContain("scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track)");
+    expect(styles).toContain("scrollbar-width: thin");
+    expect(styles).toContain("*::-webkit-scrollbar");
+    expect(styles).toContain("width: 10px");
+    expect(styles).toContain("height: 10px");
+    expect(styles).toContain("*::-webkit-scrollbar-corner");
+    expect(styles).toContain("*::-webkit-scrollbar-button");
+    expect(styles).toContain("display: none");
+    expect(styles).toContain("background-clip: content-box");
+  });
+
   it("positions collapsible list controls", () => {
     const styles = readFileSync(`${process.cwd()}/src/styles.css`, "utf8");
     const buttonStart = styles.indexOf(".markdown-paper .markra-list-toggle-button {");
