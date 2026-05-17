@@ -68,6 +68,9 @@ function FileTreeProbe({ currentPath = null }: { currentPath?: string | null }) 
       <button type="button" onClick={() => tree.createFolder("Research")}>
         Create folder
       </button>
+      <button type="button" onClick={() => tree.createFolder("Sprint", "/vault/docs")}>
+        Create nested folder
+      </button>
       <button
         type="button"
         onClick={() => tree.renameFile({ name: "readme.md", path: "/vault/readme.md", relativePath: "readme.md" }, "renamed.md")}
@@ -143,6 +146,32 @@ describe("useMarkdownFileTree", () => {
       folderName: "vault",
       folderPath: "/vault"
     });
+  });
+
+  it("creates folders inside a selected nested folder", async () => {
+    mockedOpenNativeMarkdownFolder.mockResolvedValue({
+      path: "/vault",
+      name: "vault"
+    });
+    mockedCreateNativeMarkdownTreeFolder.mockResolvedValue({
+      kind: "folder",
+      path: "/vault/docs/Sprint",
+      name: "Sprint",
+      relativePath: "docs/Sprint"
+    });
+    mockedListNativeMarkdownFilesForPath.mockResolvedValue([]);
+
+    render(<FileTreeProbe />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open folder" }));
+    await waitFor(() => expect(screen.getByTestId("open-state")).toHaveTextContent("open"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Create nested folder" }));
+
+    await waitFor(() =>
+      expect(mockedCreateNativeMarkdownTreeFolder).toHaveBeenCalledWith("/vault", "Sprint", "/vault/docs")
+    );
+    expect(mockedListNativeMarkdownFilesForPath).toHaveBeenCalledWith("/vault");
   });
 
   it("refreshes from the current document path when toggled open without an explicit folder", async () => {

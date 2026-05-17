@@ -27,6 +27,11 @@ type OpenMarkdownFolderOptions = {
   pickerTitle?: string;
 };
 
+function normalizeTreeParentPath(path: string | null | undefined) {
+  const trimmedPath = path?.trim();
+  return trimmedPath ? trimmedPath : null;
+}
+
 export function useMarkdownFileTree({ onWorkspaceSessionChange }: UseMarkdownFileTreeOptions = {}) {
   const [files, setFiles] = useState<NativeMarkdownFolderFile[]>([]);
   const [rootName, setRootName] = useState("No folder");
@@ -106,18 +111,24 @@ export function useMarkdownFileTree({ onWorkspaceSessionChange }: UseMarkdownFil
     return folder;
   }, [openFolderPath]);
 
-  const createFile = useCallback(async (fileName: string) => {
+  const createFile = useCallback(async (fileName: string, parentPath: string | null = null) => {
     if (!sourcePath) return null;
 
-    const file = await createNativeMarkdownTreeFile(sourcePath, fileName);
+    const normalizedParentPath = normalizeTreeParentPath(parentPath);
+    const file = normalizedParentPath
+      ? await createNativeMarkdownTreeFile(sourcePath, fileName, normalizedParentPath)
+      : await createNativeMarkdownTreeFile(sourcePath, fileName);
     await refresh(sourcePath);
     return file;
   }, [refresh, sourcePath]);
 
-  const createFolder = useCallback(async (folderName: string) => {
+  const createFolder = useCallback(async (folderName: string, parentPath: string | null = null) => {
     if (!sourcePath) return null;
 
-    const folder = await createNativeMarkdownTreeFolder(sourcePath, folderName);
+    const normalizedParentPath = normalizeTreeParentPath(parentPath);
+    const folder = normalizedParentPath
+      ? await createNativeMarkdownTreeFolder(sourcePath, folderName, normalizedParentPath)
+      : await createNativeMarkdownTreeFolder(sourcePath, folderName);
     await refresh(sourcePath);
     return folder;
   }, [refresh, sourcePath]);

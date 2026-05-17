@@ -5,6 +5,7 @@ import {
   confirmNativeMarkdownFileDelete,
   confirmNativeUnsavedMarkdownDocumentDiscard,
   createNativeMarkdownTreeFile,
+  createNativeMarkdownTreeFolder,
   deleteNativeMarkdownTreeFile,
   downloadNativeWebImage,
   openNativeMarkdownFolder,
@@ -92,6 +93,7 @@ vi.mock("../lib/tauri", () => ({
   confirmNativeMarkdownFileDelete: vi.fn(),
   confirmNativeUnsavedMarkdownDocumentDiscard: vi.fn(),
   createNativeMarkdownTreeFile: vi.fn(),
+  createNativeMarkdownTreeFolder: vi.fn(),
   deleteNativeMarkdownTreeFile: vi.fn(),
   downloadNativeWebImage: vi.fn(),
   installNativeMarkdownFileDrop: vi.fn(),
@@ -197,7 +199,6 @@ vi.mock("../lib/settings/app-settings", () => ({
       { id: "aiAgent", visible: true },
       { id: "sourceMode", visible: true },
       { id: "splitMode", visible: true },
-      { id: "open", visible: true },
       { id: "save", visible: true },
       { id: "theme", visible: true }
     ],
@@ -251,7 +252,6 @@ vi.mock("../lib/settings/app-settings", () => ({
     { id: "aiAgent", visible: true },
     { id: "sourceMode", visible: true },
     { id: "splitMode", visible: true },
-    { id: "open", visible: true },
     { id: "save", visible: true },
     { id: "theme", visible: true }
   ],
@@ -339,7 +339,6 @@ vi.mock("../lib/settings/app-settings", () => ({
       { id: "aiAgent", visible: true },
       { id: "sourceMode", visible: true },
       { id: "splitMode", visible: true },
-      { id: "open", visible: true },
       { id: "save", visible: true },
       { id: "theme", visible: true }
     ],
@@ -350,7 +349,6 @@ vi.mock("../lib/settings/app-settings", () => ({
     { id: "aiAgent", visible: true },
     { id: "sourceMode", visible: true },
     { id: "splitMode", visible: true },
-    { id: "open", visible: true },
     { id: "save", visible: true },
     { id: "theme", visible: true }
   ]),
@@ -359,7 +357,6 @@ vi.mock("../lib/settings/app-settings", () => ({
       { id: "aiAgent", visible: true },
       { id: "sourceMode", visible: true },
       { id: "splitMode", visible: true },
-      { id: "open", visible: true },
       { id: "save", visible: true },
       { id: "theme", visible: true }
     ];
@@ -451,6 +448,7 @@ export const mockedOpenNativeMarkdownFolderInNewWindow = vi.mocked(openNativeMar
 export const mockedConfirmNativeMarkdownFileDelete = vi.mocked(confirmNativeMarkdownFileDelete);
 export const mockedConfirmNativeUnsavedMarkdownDocumentDiscard = vi.mocked(confirmNativeUnsavedMarkdownDocumentDiscard);
 export const mockedCreateNativeMarkdownTreeFile = vi.mocked(createNativeMarkdownTreeFile);
+export const mockedCreateNativeMarkdownTreeFolder = vi.mocked(createNativeMarkdownTreeFolder);
 export const mockedDeleteNativeMarkdownTreeFile = vi.mocked(deleteNativeMarkdownTreeFile);
 export const mockedDownloadNativeWebImage = vi.mocked(downloadNativeWebImage);
 export const mockedOpenNativeMarkdownFileInNewWindow = vi.mocked(openNativeMarkdownFileInNewWindow);
@@ -597,6 +595,7 @@ export function installAppTestHarness() {
     mockedConfirmNativeMarkdownFileDelete.mockReset();
     mockedConfirmNativeUnsavedMarkdownDocumentDiscard.mockReset();
     mockedCreateNativeMarkdownTreeFile.mockReset();
+    mockedCreateNativeMarkdownTreeFolder.mockReset();
     mockedDeleteNativeMarkdownTreeFile.mockReset();
     mockedInstallNativeMarkdownFileDrop.mockReset();
     mockedOpenNativeMarkdownFolder.mockReset();
@@ -715,6 +714,12 @@ export function installAppTestHarness() {
       path: "/mock-files/vault/Daily note.md",
       relativePath: "Daily note.md"
     });
+    mockedCreateNativeMarkdownTreeFolder.mockResolvedValue({
+      kind: "folder",
+      name: "Research",
+      path: "/mock-files/vault/Research",
+      relativePath: "Research"
+    });
     mockedDeleteNativeMarkdownTreeFile.mockResolvedValue(undefined);
     mockedRenameNativeMarkdownTreeFile.mockResolvedValue({
       name: "Renamed.md",
@@ -782,7 +787,6 @@ export function installAppTestHarness() {
         { id: "aiAgent", visible: true },
         { id: "sourceMode", visible: true },
         { id: "splitMode", visible: true },
-        { id: "open", visible: true },
         { id: "save", visible: true },
         { id: "theme", visible: true }
       ],

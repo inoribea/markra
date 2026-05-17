@@ -1049,9 +1049,9 @@ export default function App() {
       .then(() => notifyAppEditorPreferencesChanged(nextPreferences))
       .catch(() => {});
   }, [editorPreferences.preferences]);
-  const handleCreateMarkdownTreeFile = useCallback(async (fileName: string) => {
+  const handleCreateMarkdownTreeFile = useCallback(async (fileName: string, parentPath: string | null = null) => {
     try {
-      const file = await createMarkdownTreeFile(fileName);
+      const file = await createMarkdownTreeFile(fileName, parentPath);
       if (file) {
         setActiveImageFile(null);
         await openTreeMarkdownFile(file);
@@ -1080,9 +1080,9 @@ export default function App() {
     ));
     setActiveImageFile((currentFile) => currentFile?.path === previousPath ? renamedFile : currentFile);
   }, [replaceOpenDocumentFile]);
-  const handleCreateMarkdownTreeFolder = useCallback(async (folderName: string) => {
+  const handleCreateMarkdownTreeFolder = useCallback(async (folderName: string, parentPath: string | null = null) => {
     try {
-      await createMarkdownTreeFolder(folderName);
+      await createMarkdownTreeFolder(folderName, parentPath);
     } catch {
       // Native folder errors are surfaced by the platform operation when possible.
     }
@@ -1652,11 +1652,13 @@ export default function App() {
             <MarkdownFileTreeDrawer
               currentPath={activeImageFile?.path ?? (hasOpenDocument ? document.path : null)}
               files={fileTreeFiles}
+              folderOpen={Boolean(fileTree.sourcePath)}
               language={appLanguage.language}
               maxWidth={fileTreeMaxWidth}
               minWidth={fileTreeMinWidth}
               open={fileTreeOpen}
               outlineItems={outlineItems}
+              rootPath={fileTree.sourcePath}
               rootName={fileTreeRootName}
               width={fileTreeWidth}
               onCreateFile={handleCreateMarkdownTreeFile}

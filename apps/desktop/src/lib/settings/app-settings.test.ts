@@ -187,7 +187,6 @@ describe("app settings", () => {
         { id: "aiAgent", visible: true },
         { id: "sourceMode", visible: true },
         { id: "splitMode", visible: true },
-        { id: "open", visible: true },
         { id: "save", visible: true },
         { id: "theme", visible: true }
       ],
@@ -427,7 +426,6 @@ describe("app settings", () => {
         { id: "aiAgent", visible: true },
         { id: "sourceMode", visible: true },
         { id: "splitMode", visible: true },
-        { id: "open", visible: true },
         { id: "save", visible: true },
         { id: "theme", visible: true }
       ],
@@ -449,7 +447,6 @@ describe("app settings", () => {
       { id: "save", visible: false },
       { id: "theme", visible: true },
       { id: "aiAgent", visible: true },
-      { id: "open", visible: true },
       { id: "sourceMode", visible: true },
       { id: "splitMode", visible: true }
     ]);
@@ -489,7 +486,6 @@ describe("app settings", () => {
       { id: "aiAgent", visible: true },
       { id: "sourceMode", visible: true },
       { id: "splitMode", visible: true },
-      { id: "open", visible: true },
       { id: "save", visible: true },
       { id: "theme", visible: true }
     ] as const;
@@ -497,7 +493,6 @@ describe("app settings", () => {
     expect(reorderTitlebarActions(actions, "aiAgent", "save")).toEqual([
       { id: "sourceMode", visible: true },
       { id: "splitMode", visible: true },
-      { id: "open", visible: true },
       { id: "save", visible: true },
       { id: "aiAgent", visible: true },
       { id: "theme", visible: true }
@@ -507,7 +502,6 @@ describe("app settings", () => {
       { id: "save", visible: true },
       { id: "sourceMode", visible: true },
       { id: "splitMode", visible: true },
-      { id: "open", visible: true },
       { id: "theme", visible: true }
     ]);
   });
@@ -685,7 +679,6 @@ describe("app settings", () => {
         { id: "aiAgent", visible: true },
         { id: "sourceMode", visible: true },
         { id: "splitMode", visible: true },
-        { id: "open", visible: true },
         { id: "save", visible: true },
         { id: "theme", visible: true }
       ],
@@ -735,7 +728,6 @@ describe("app settings", () => {
       titlebarActions: [
         { id: "theme", visible: true },
         { id: "save", visible: false },
-        { id: "open", visible: true },
         { id: "sourceMode", visible: true },
         { id: "splitMode", visible: true },
         { id: "aiAgent", visible: true }
@@ -784,7 +776,6 @@ describe("app settings", () => {
       titlebarActions: [
         { id: "theme", visible: true },
         { id: "save", visible: false },
-        { id: "open", visible: true },
         { id: "sourceMode", visible: true },
         { id: "splitMode", visible: true },
         { id: "aiAgent", visible: true }
