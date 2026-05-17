@@ -131,6 +131,7 @@ function isEquivalentEditorMarkdown(left: string, right: string) {
 type UseMarkdownDocumentOptions = {
   confirmDiscardUnsavedChanges?: (document: DocumentState) => boolean | Promise<boolean>;
   documentTabsEnabled?: boolean;
+  editorReady?: boolean | (() => boolean);
   getCurrentMarkdown: (fallbackContent: string) => string;
   isCurrentMarkdownEquivalent?: (markdown: string) => boolean | undefined;
   onMarkdownTreeChange?: (path: string) => unknown | Promise<unknown>;
@@ -149,9 +150,14 @@ function persistWorkspaceState(patch: Parameters<typeof saveStoredWorkspaceState
   saveStoredWorkspaceState(patch).catch(() => {});
 }
 
+function resolveEditorReady(editorReady: boolean | (() => boolean)) {
+  return typeof editorReady === "function" ? editorReady() : editorReady;
+}
+
 export function useMarkdownDocument({
   confirmDiscardUnsavedChanges,
   documentTabsEnabled = false,
+  editorReady = true,
   getCurrentMarkdown,
   isCurrentMarkdownEquivalent,
   onMarkdownTreeChange,
@@ -216,9 +222,16 @@ export function useMarkdownDocument({
   const currentMarkdown = useCallback(() => {
     const current = documentRef.current;
     if (!current.open) return current.content;
+    if (!resolveEditorReady(editorReady)) return current.content;
 
     return getCurrentMarkdown(current.content);
-  }, [getCurrentMarkdown]);
+  }, [editorReady, getCurrentMarkdown]);
+
+  const isActiveEditorMarkdownEquivalent = useCallback((markdown: string) => {
+    if (!resolveEditorReady(editorReady)) return undefined;
+
+    return isCurrentMarkdownEquivalent?.(markdown);
+  }, [editorReady, isCurrentMarkdownEquivalent]);
 
   const setActiveDocument = useCallback((nextDocument: DocumentState) => {
     documentRef.current = nextDocument;
@@ -270,7 +283,7 @@ export function useMarkdownDocument({
     const content = currentMarkdown();
     if (current.content === content) return current;
 
-    const editorContentEquivalent = isCurrentMarkdownEquivalent?.(current.content);
+    const editorContentEquivalent = isActiveEditorMarkdownEquivalent(current.content);
     const nextDocument =
       !current.dirty && (editorContentEquivalent === true || isEquivalentEditorMarkdown(current.content, content))
         ? { ...current, content, dirty: false }
@@ -278,7 +291,7 @@ export function useMarkdownDocument({
 
     setActiveDocument(nextDocument);
     return nextDocument;
-  }, [currentMarkdown, isCurrentMarkdownEquivalent, setActiveDocument]);
+  }, [currentMarkdown, isActiveEditorMarkdownEquivalent, setActiveDocument]);
 
   const hasDiscardableUnsavedChanges = useCallback(() => {
     const current = documentRef.current;
@@ -286,7 +299,7 @@ export function useMarkdownDocument({
     if (current.path === null && current.content.trim().length === 0) return false;
 
     if (!current.dirty) {
-      const editorContentEquivalent = isCurrentMarkdownEquivalent?.(current.content);
+      const editorContentEquivalent = isActiveEditorMarkdownEquivalent(current.content);
       if (editorContentEquivalent) return false;
       if (editorContentEquivalent === false && current.path !== null) return true;
 
@@ -297,7 +310,7 @@ export function useMarkdownDocument({
 
     const editorMarkdown = currentMarkdown();
     return editorMarkdown.trim().length > 0;
-  }, [currentMarkdown, isCurrentMarkdownEquivalent]);
+  }, [currentMarkdown, isActiveEditorMarkdownEquivalent]);
 
   const hasDiscardableTabChanges = useCallback((tab: MarkdownDocumentTab) => {
     if (tab.id === activeTabIdRef.current) return hasDiscardableUnsavedChanges();
@@ -319,16 +332,18 @@ export function useMarkdownDocument({
   ]);
 
   const handleMarkdownChange = useCallback((content: string) => {
+    if (!resolveEditorReady(editorReady)) return;
+
     const current = documentRef.current;
     if (!current.open || current.content === content) return;
-    const editorContentEquivalent = isCurrentMarkdownEquivalent?.(current.content);
+    const editorContentEquivalent = isActiveEditorMarkdownEquivalent(current.content);
     const nextDocument =
       !current.dirty && (editorContentEquivalent === true || isEquivalentEditorMarkdown(current.content, content))
         ? { ...current, content, dirty: false }
         : { ...current, content, dirty: true };
 
     setActiveDocument(nextDocument);
-  }, [isCurrentMarkdownEquivalent, setActiveDocument]);
+  }, [editorReady, isActiveEditorMarkdownEquivalent, setActiveDocument]);
 
   const resetToBlankDocument = useCallback(() => {
     const nextDocument = {

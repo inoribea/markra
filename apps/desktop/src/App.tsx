@@ -202,6 +202,8 @@ export default function App() {
   const pendingEditorContentWidthPxRef = useRef<number | null>(null);
   const pendingSplitVisualPanePercentRef = useRef(defaultSplitVisualPanePercent);
   const sourceToVisualSyncingRef = useRef(false);
+  const documentRevisionRef = useRef(0);
+  const visualEditorReadyRevisionRef = useRef<number | null>(null);
   const sourceScrollRef = useRef<HTMLElement | null>(null);
   const visualScrollRef = useRef<HTMLElement | null>(null);
   const splitSurfaceRef = useRef<HTMLDivElement | null>(null);
@@ -233,11 +235,19 @@ export default function App() {
 
     return isEditorCurrentMarkdownEquivalent(markdown);
   }, [isEditorCurrentMarkdownEquivalent, sourceSurfaceActive]);
+  const isDocumentEditorReady = useCallback(() => {
+    if (sourceSurfaceActive) return true;
+
+    return visualEditorReadyRevisionRef.current === documentRevisionRef.current;
+  }, [sourceSurfaceActive]);
   const handleVisualEditorReady = useCallback((...args: Parameters<typeof handleMilkdownEditorReady>) => {
     const [readyEditor] = args;
     handleMilkdownEditorReady(...args);
     if (readyEditor) {
+      visualEditorReadyRevisionRef.current = documentRevisionRef.current;
       setVisualEditorReadySequence((current) => current + 1);
+    } else if (visualEditorReadyRevisionRef.current === documentRevisionRef.current) {
+      visualEditorReadyRevisionRef.current = null;
     }
   }, [handleMilkdownEditorReady]);
   useDefaultContextMenuBlocker();
@@ -279,6 +289,7 @@ export default function App() {
   const markdownDocument = useMarkdownDocument({
     confirmDiscardUnsavedChanges,
     documentTabsEnabled: editorPreferences.preferences.showDocumentTabs,
+    editorReady: isDocumentEditorReady,
     getCurrentMarkdown: readCurrentMarkdownForDocument,
     isCurrentMarkdownEquivalent: isCurrentMarkdownEquivalentForDocument,
     onMarkdownTreeChange: refreshMarkdownFileTree,
@@ -311,6 +322,7 @@ export default function App() {
     workspaceSessionId,
     wordCount
   } = markdownDocument;
+  documentRevisionRef.current = document.revision;
   const workspaceKey = document.path ?? fileTree.sourcePath ?? null;
   const hasOpenDocument = document.open;
   const activeAiAgentSessionId = workspaceSessionId ?? aiAgentSessionId;

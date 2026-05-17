@@ -400,6 +400,47 @@ describe("useMarkdownDocument", () => {
     expect(result.current.tabs.some((tab) => tab.id === guideTab!.id)).toBe(true);
   });
 
+  it("closes a clean tab without prompting when the editor still exposes stale markdown", async () => {
+    const editorMarkdown = "# Previous file";
+    const confirmDiscardUnsavedChanges = vi.fn(() => false);
+    mockedReadNativeMarkdownFile.mockResolvedValue({
+      content: "# Guide\n\nClean",
+      name: "guide.md",
+      path: "/mock-files/guide.md"
+    });
+    const { result } = renderHook(() =>
+      useMarkdownDocument({
+        confirmDiscardUnsavedChanges,
+        documentTabsEnabled: true,
+        editorReady: false,
+        getCurrentMarkdown: () => editorMarkdown,
+        isCurrentMarkdownEquivalent: () => false,
+        onTreeRootFromFilePath: vi.fn(),
+        onTreeRootFromFolderPath: vi.fn(),
+        preferencesReady: false,
+        restoreWorkspaceOnStartup: false
+      })
+    );
+
+    await act(async () => {
+      await result.current.openTreeMarkdownFile({
+        name: "guide.md",
+        path: "/mock-files/guide.md",
+        relativePath: "guide.md"
+      });
+    });
+
+    const guideTab = result.current.tabs.find((tab) => tab.name === "guide.md");
+    expect(guideTab).toBeTruthy();
+
+    await act(async () => {
+      await result.current.closeMarkdownTab(guideTab!.id);
+    });
+
+    expect(confirmDiscardUnsavedChanges).not.toHaveBeenCalled();
+    expect(result.current.tabs.some((tab) => tab.id === guideTab!.id)).toBe(false);
+  });
+
   it("forwards native folder tree changes while watching an opened markdown file", async () => {
     const onMarkdownTreeChange = vi.fn();
     let emitTreeChange: (path: string) => unknown = () => {};
