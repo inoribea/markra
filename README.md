@@ -116,6 +116,14 @@ Product docs · Blog posts · Research notes · Technical writing with tables, c
 
 Contributions are welcome — whether it's product experience, Markdown editing, AI workflows, cross-platform fixes, or docs. See [issues](https://github.com/murongg/markra/issues) for open tasks or start a discussion.
 
+## Star History
+
+<p align="center">
+  <a href="https://star-history.com/#murongg/markra&Date">
+    <img alt="Markra star history chart" src="https://api.star-history.com/svg?repos=murongg/markra&type=Date" />
+  </a>
+</p>
+
 ## License
 
 Markra is licensed under AGPL-3.0.
