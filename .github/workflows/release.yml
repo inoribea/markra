@@ -235,7 +235,9 @@ jobs:
           fi
 
           node .release-scripts/scripts/release/repair-linux-appimage-libraries.mjs "${APPIMAGE_APPDIR}"
+          node .release-scripts/scripts/release/repair-linux-appimage-gtk-ime.mjs "${APPIMAGE_APPDIR}"
           node .release-scripts/scripts/release/verify-linux-appimage-libraries.mjs "${APPIMAGE_APPDIR}"
+          node .release-scripts/scripts/release/verify-linux-appimage-gtk-ime.mjs "${APPIMAGE_APPDIR}"
 
           rm -f "${appimage_path}.sig" "${appimage_path}.tar.gz" "${appimage_path}.tar.gz.sig"
 
@@ -253,7 +255,9 @@ jobs:
         shell: bash
         env:
           APPIMAGE_APPDIR: ${{ env.DESKTOP_DIR }}/src-tauri/target/${{ matrix.target }}/release/bundle/appimage/${{ env.APP_PRODUCT_NAME }}.AppDir
-        run: node .release-scripts/scripts/release/verify-linux-appimage-libraries.mjs
+        run: |
+          node .release-scripts/scripts/release/verify-linux-appimage-libraries.mjs
+          node .release-scripts/scripts/release/verify-linux-appimage-gtk-ime.mjs
 
       - name: Add macOS open helper to DMG
         if: startsWith(matrix.os, 'macos-')

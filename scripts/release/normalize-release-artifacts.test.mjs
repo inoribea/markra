@@ -69,10 +69,12 @@ test("release workflow excludes Wayland client from Linux AppImage bundling", ()
   assert.match(buildStep, /LINUXDEPLOY_EXCLUDED_LIBRARIES:\s*libwayland-client\.so\*/);
   assert.match(rebuildStep, /if:\s*matrix\.os == 'ubuntu-22\.04'/);
   assert.match(rebuildStep, /repair-linux-appimage-libraries\.mjs/);
+  assert.match(rebuildStep, /repair-linux-appimage-gtk-ime\.mjs/);
   assert.match(rebuildStep, /appimagetool-x86_64\.AppImage/);
   assert.match(rebuildStep, /tauri" signer sign/);
   assert.match(verifyStep, /if:\s*matrix\.os == 'ubuntu-22\.04'/);
   assert.match(verifyStep, /verify-linux-appimage-libraries\.mjs/);
+  assert.match(verifyStep, /verify-linux-appimage-gtk-ime\.mjs/);
 });
 
 test("normalize-release-artifacts adds macOS platform labels to updater and dmg assets", () => {
