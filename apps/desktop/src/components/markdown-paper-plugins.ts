@@ -3,6 +3,7 @@ import {
   inputRules as commonmarkInputRules,
   keymap as commonmarkKeymap,
   plugins as commonmarkPlugins,
+  remarkPreserveEmptyLinePlugin,
   schema as commonmarkSchema
 } from "@milkdown/kit/preset/commonmark";
 import {
@@ -26,7 +27,10 @@ export const markraCommonmark = [
   commonmarkInputRules,
   commonmarkCommands,
   commonmarkKeymap,
-  commonmarkPlugins
+  commonmarkPlugins.filter((plugin) =>
+    plugin !== remarkPreserveEmptyLinePlugin.plugin &&
+    plugin !== remarkPreserveEmptyLinePlugin.options
+  )
 ].flat();
 
 export const markraGfm = [

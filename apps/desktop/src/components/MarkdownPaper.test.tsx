@@ -2126,8 +2126,51 @@ describe("MarkdownPaper editing", () => {
     expect(screen.getByRole("option", { name: "Heading 1" })).toBeInTheDocument();
 
     const serializeMarkdown = editor.action((ctx) => ctx.get(serializerCtx));
-    expect(serializeMarkdown(view.state.doc)).toBe("First\n\nSecond\n\n<br />\n\nThird\n");
+    expect(serializeMarkdown(view.state.doc)).toBe("First\n\nSecond\n\n\n\nThird\n");
     expect(container.querySelector(".ProseMirror")?.textContent).not.toContain("/");
+    restoreLayout();
+  });
+
+  it("saves side-toolbar blank paragraphs as markdown blank lines instead of br tags", async () => {
+    const onMarkdownChange = vi.fn();
+    const { container, view } = await renderEditor("First\n\nSecond\n\nThird", { onMarkdownChange });
+    const restoreLayout = mockTopLevelBlockDragLayout(view, container);
+    const surface = container.querySelector<HTMLElement>(".ProseMirror");
+    expect(surface).toBeInTheDocument();
+
+    fireEvent.pointerMove(surface!, {
+      clientX: 240,
+      clientY: 152
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add block below" }));
+
+    await settleMarkdownListener();
+    const latestMarkdown = String(onMarkdownChange.mock.calls.at(-1)?.[0] ?? "");
+    expect(latestMarkdown).toContain("Second\n\n\n\nThird");
+    expect(latestMarkdown).not.toContain("<br");
+    restoreLayout();
+  });
+
+  it("saves blank list items without br tags", async () => {
+    const onMarkdownChange = vi.fn();
+    const { container, view } = await renderEditor("- First\n- Second", { onMarkdownChange });
+    const restoreLayout = mockListItemBlockDragLayout(view, container);
+    const surface = container.querySelector<HTMLElement>(".ProseMirror");
+    expect(surface).toBeInTheDocument();
+
+    fireEvent.pointerMove(surface!, {
+      clientX: 240,
+      clientY: 112
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add block below" }));
+
+    await settleMarkdownListener();
+    const latestMarkdown = String(onMarkdownChange.mock.calls.at(-1)?.[0] ?? "");
+    expect(latestMarkdown).not.toContain("<br");
+    expect(latestMarkdown).toContain("* First");
+    expect(latestMarkdown).toContain("* Second");
     restoreLayout();
   });
 
