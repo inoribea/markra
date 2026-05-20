@@ -21,6 +21,12 @@
   <img alt="License" src="https://img.shields.io/badge/License-AGPL--3.0-important" />
 </p>
 
+<p align="center">
+  <a href="https://www.producthunt.com/products/markra">
+    <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=markra&theme=light" width="250" height="54" alt="Find Markra on Product Hunt" />
+  </a>
+</p>
+
 Markra is a local-first, open-source Markdown editor that brings AI into the writing flow. Edit in WYSIWYG or source mode, keep everything as plain `.md` files on disk, and let AI polish, rewrite, or expand your content — with full preview before any change lands.
 
 No cloud sync, no account required. AI calls only go where you point them.

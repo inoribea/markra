@@ -21,6 +21,12 @@
   <img alt="License" src="https://img.shields.io/badge/License-AGPL--3.0-important" />
 </p>
 
+<p align="center">
+  <a href="https://www.producthunt.com/products/markra">
+    <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=markra&theme=light" width="250" height="54" alt="在 Product Hunt 上查看 Markra" />
+  </a>
+</p>
+
 Markra 是一个本地优先的开源 Markdown 编辑器，把 AI 融入写作流程。支持所见即所得和源码两种模式，文件以纯 `.md` 格式保存在本地，AI 可以帮你润色、改写或扩写内容——所有修改都先预览，确认后才写入。
 
 无需云同步，无需注册账号。AI 请求只发往你指定的服务商。
