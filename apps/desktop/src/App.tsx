@@ -2519,6 +2519,7 @@ export default function App() {
                           documentKey={activeTabId}
                           documentPath={document.path}
                           editorTheme={appTheme.editorTheme}
+                          extendedSyntax={editorPreferences.preferences.extendedSyntax}
                           initialContent={document.content}
                           language={appLanguage.language}
                           lineHeight={editorPreferences.preferences.lineHeight}
@@ -2561,6 +2562,7 @@ export default function App() {
                           content={document.content}
                           contentWidth={activeEditorContentWidth}
                           contentWidthPx={activeEditorContentWidthPx}
+                          extendedSyntax={editorPreferences.preferences.extendedSyntax}
                           language={appLanguage.language}
                           lineHeight={editorPreferences.preferences.lineHeight}
                           onChange={handleSourceMarkdownChange}
@@ -2582,6 +2584,7 @@ export default function App() {
                       content={document.content}
                       contentWidth={activeEditorContentWidth}
                       contentWidthPx={activeEditorContentWidthPx}
+                      extendedSyntax={editorPreferences.preferences.extendedSyntax}
                       language={appLanguage.language}
                       lineHeight={editorPreferences.preferences.lineHeight}
                       onChange={handleSourceMarkdownChange}
@@ -2604,6 +2607,7 @@ export default function App() {
                       documentKey={activeTabId}
                       documentPath={document.path}
                       editorTheme={appTheme.editorTheme}
+                      extendedSyntax={editorPreferences.preferences.extendedSyntax}
                       initialContent={document.content}
                       language={appLanguage.language}
                       lineHeight={editorPreferences.preferences.lineHeight}
@@ -2657,6 +2661,7 @@ export default function App() {
                         documentKey={sideDocumentTab.id}
                         documentPath={sideDocumentTab.path}
                         editorTheme={appTheme.editorTheme}
+                        extendedSyntax={editorPreferences.preferences.extendedSyntax}
                         language={appLanguage.language}
                         lineHeight={editorPreferences.preferences.lineHeight}
                         markdownShortcuts={editorPreferences.preferences.markdownShortcuts}
@@ -2766,6 +2771,7 @@ export default function App() {
       </main>
       <MarkdownExportDocument
         snapshot={exportSnapshot}
+        extendedSyntax={editorPreferences.preferences.extendedSyntax}
         resolveImageSrc={resolveExportImageSrc}
         onRendered={handleRenderedExport}
       />

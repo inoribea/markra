@@ -14,6 +14,7 @@ import {
 } from "@markra/editor";
 import { parseMarkdownCalloutMarker, type ParsedMarkdownCalloutMarker } from "@markra/shared";
 import type { ExportDocumentFormat } from "../lib/document-export";
+import type { ExtendedSyntaxPreferences } from "../lib/settings/app-settings";
 
 export type MarkdownExportSnapshot = {
   id: number;
@@ -30,6 +31,7 @@ export type RenderedMarkdownExport = {
 };
 
 type MarkdownExportDocumentProps = {
+  extendedSyntax?: ExtendedSyntaxPreferences;
   onRendered: (exported: RenderedMarkdownExport) => unknown;
   resolveImageSrc?: (src: string) => string;
   snapshot: MarkdownExportSnapshot | null;
@@ -186,11 +188,13 @@ function renderCalloutBlockquote(props: {
 }
 
 export function MarkdownExportDocument({
+  extendedSyntax,
   onRendered,
   resolveImageSrc,
   snapshot
 }: MarkdownExportDocumentProps) {
   const articleRef = useRef<HTMLElement | null>(null);
+  const githubAlertsEnabled = extendedSyntax?.githubAlerts ?? true;
 
   useEffect(() => {
     if (!snapshot || !articleRef.current) return;
@@ -223,7 +227,7 @@ export function MarkdownExportDocument({
     return () => {
       cancelled = true;
     };
-  }, [onRendered, snapshot]);
+  }, [githubAlertsEnabled, onRendered, snapshot]);
 
   if (!snapshot) return null;
 
@@ -240,7 +244,8 @@ export function MarkdownExportDocument({
           remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
           components={{
             a: ({ node: _node, ...props }) => <a {...props} rel="noreferrer" target="_blank" />,
-            blockquote: ({ node: _node, ...props }) => renderCalloutBlockquote(props),
+            blockquote: ({ node: _node, ...props }) =>
+              githubAlertsEnabled ? renderCalloutBlockquote(props) : <blockquote {...props} />,
             code: ({ node: _node, className, children, ...props }) => {
               if (hasMathClass(className, "inline")) {
                 return renderMathSource(childrenToText(children), "inline", mathMacros);

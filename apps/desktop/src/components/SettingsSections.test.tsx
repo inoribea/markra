@@ -273,6 +273,52 @@ describe("EditorSettings", () => {
     });
   });
 
+  it("toggles extension syntax features from the extended syntax settings", () => {
+    const onUpdatePreferences = vi.fn();
+    const preferences: EditorPreferences = {
+      ...defaultEditorPreferences,
+      extendedSyntax: {
+        githubAlerts: true,
+        highlight: true
+      }
+    };
+
+    render(
+      <EditorSettings
+        preferences={preferences}
+        translate={translate}
+        onUpdatePreferences={onUpdatePreferences}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: "Extended syntax" })).toBeInTheDocument();
+    const highlightSwitch = screen.getByRole("switch", { name: "Highlight syntax" });
+    const githubAlertsSwitch = screen.getByRole("switch", { name: "GitHub-style warning boxes" });
+    expect(highlightSwitch).toBeChecked();
+    expect(githubAlertsSwitch).toBeChecked();
+    expect(screen.queryByRole("note", { name: "GitHub compatibility" })).not.toBeInTheDocument();
+
+    fireEvent.click(highlightSwitch);
+
+    expect(onUpdatePreferences).toHaveBeenCalledWith({
+      ...preferences,
+      extendedSyntax: {
+        githubAlerts: true,
+        highlight: false
+      }
+    });
+
+    fireEvent.click(githubAlertsSwitch);
+
+    expect(onUpdatePreferences).toHaveBeenCalledWith({
+      ...preferences,
+      extendedSyntax: {
+        githubAlerts: false,
+        highlight: true
+      }
+    });
+  });
+
   it("edits the selected lightweight markdown template from a two-pane settings layout", () => {
     const onDeleteTemplate = vi.fn();
     const onUpdateTemplate = vi.fn();

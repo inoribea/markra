@@ -140,6 +140,33 @@ describe("MarkdownExportDocument", () => {
     expect(bodyHtml).toContain("Check this before publishing.");
   });
 
+  it("exports GitHub-style alert blockquotes as plain blockquotes when the extension is disabled", async () => {
+    const onRendered = vi.fn();
+
+    render(
+      <MarkdownExportDocument
+        extendedSyntax={{
+          githubAlerts: false,
+          highlight: true
+        }}
+        onRendered={onRendered}
+        snapshot={{
+          id: 1,
+          kind: "html",
+          markdown: "> [!WARNING]\n> Check this before publishing.",
+          title: "callout.md"
+        }}
+      />
+    );
+
+    await waitFor(() => expect(onRendered).toHaveBeenCalledTimes(1));
+
+    const bodyHtml = onRendered.mock.calls[0]?.[0].bodyHtml as string;
+    expect(bodyHtml).not.toContain("markra-callout");
+    expect(bodyHtml).toContain("[!WARNING]");
+    expect(bodyHtml).toContain("Check this before publishing.");
+  });
+
   it("omits empty marker paragraphs from exported callouts", async () => {
     const onRendered = vi.fn();
 

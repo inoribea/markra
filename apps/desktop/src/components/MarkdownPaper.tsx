@@ -21,6 +21,7 @@ type MarkdownPaperProps = {
   documentKey?: string | null;
   documentPath?: MarkdownPaperSurfaceProps["documentPath"];
   editorTheme?: EditorTheme;
+  extendedSyntax?: MarkdownPaperSurfaceProps["extendedSyntax"];
   initialContent: string;
   language?: AppLanguage;
   lineHeight?: number;
@@ -54,6 +55,7 @@ export function MarkdownPaper({
   documentKey,
   documentPath,
   editorTheme = "light",
+  extendedSyntax,
   initialContent,
   language = "en",
   lineHeight = 1.65,
@@ -112,6 +114,7 @@ export function MarkdownPaper({
         <MarkdownPaperSurface
           autoFocus={autoFocus}
           documentPath={documentPath}
+          extendedSyntax={extendedSyntax}
           initialContent={initialContent}
           language={language}
           markdownShortcuts={markdownShortcuts}

@@ -161,6 +161,10 @@ describe("app settings", () => {
       closeAiCommandOnAgentPanelOpen: false,
       contentWidth: "default",
       contentWidthPx: null,
+      extendedSyntax: {
+        githubAlerts: true,
+        highlight: true
+      },
       imageUpload: {
         fileNamePattern: "pasted-image-{timestamp}",
         provider: "local",
@@ -433,6 +437,10 @@ describe("app settings", () => {
           username: "ada"
         }
       },
+      extendedSyntax: {
+        githubAlerts: true,
+        highlight: true
+      },
       lineHeight: 1.65,
       markdownShortcuts: {
         ...defaultMarkdownShortcuts,
@@ -497,6 +505,37 @@ describe("app settings", () => {
       ...defaultAiQuickActionPrompts,
       continue: "Keep writing in the same voice.",
       summarize: "Summarize in one sentence."
+    });
+  });
+
+  it("normalizes extended syntax preferences", () => {
+    expect(normalizeEditorPreferences({}).extendedSyntax).toEqual({
+      githubAlerts: true,
+      highlight: true
+    });
+    expect(normalizeEditorPreferences({
+      extendedSyntax: {
+        githubAlerts: false,
+        highlight: false
+      }
+    }).extendedSyntax).toEqual({
+      githubAlerts: false,
+      highlight: false
+    });
+    expect(normalizeEditorPreferences({
+      extendedSyntax: {
+        githubAlerts: "maybe",
+        highlight: "nope"
+      }
+    }).extendedSyntax).toEqual({
+      githubAlerts: true,
+      highlight: true
+    });
+    expect(normalizeEditorPreferences({
+      extendedSyntax: null
+    }).extendedSyntax).toEqual({
+      githubAlerts: true,
+      highlight: true
     });
   });
 
@@ -677,6 +716,10 @@ describe("app settings", () => {
       closeAiCommandOnAgentPanelOpen: false,
       contentWidth: "default",
       contentWidthPx: null,
+      extendedSyntax: {
+        githubAlerts: true,
+        highlight: true
+      },
       imageUpload: {
         fileNamePattern: "pasted-image-{timestamp}",
         provider: "local",
@@ -725,6 +768,10 @@ describe("app settings", () => {
       closeAiCommandOnAgentPanelOpen: true,
       contentWidth: "wide",
       contentWidthPx: 1120,
+      extendedSyntax: {
+        githubAlerts: false,
+        highlight: false
+      },
       imageUpload: {
         fileNamePattern: "{name}-{timestamp}",
         provider: "webdav",
@@ -781,6 +828,10 @@ describe("app settings", () => {
       closeAiCommandOnAgentPanelOpen: true,
       contentWidth: "wide",
       contentWidthPx: 1120,
+      extendedSyntax: {
+        githubAlerts: false,
+        highlight: false
+      },
       imageUpload: {
         fileNamePattern: "{name}-{timestamp}",
         provider: "webdav",

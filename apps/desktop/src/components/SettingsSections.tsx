@@ -2326,6 +2326,46 @@ export function EditorSettings({
           }
         />
       </SettingsSection>
+      <SettingsSection label={translate("settings.sections.extendedSyntax")}>
+        <SettingsRow
+          title={translate("settings.editor.highlightSyntax")}
+          description={translate("settings.editor.highlightSyntaxDescription")}
+          action={
+            <SettingsSwitch
+              checked={preferences.extendedSyntax.highlight}
+              label={translate("settings.editor.highlightSyntax")}
+              onChange={() =>
+                onUpdatePreferences({
+                  ...preferences,
+                  extendedSyntax: {
+                    ...preferences.extendedSyntax,
+                    highlight: !preferences.extendedSyntax.highlight
+                  }
+                })
+              }
+            />
+          }
+        />
+        <SettingsRow
+          title={translate("settings.editor.githubAlerts")}
+          description={translate("settings.editor.githubAlertsDescription")}
+          action={
+            <SettingsSwitch
+              checked={preferences.extendedSyntax.githubAlerts}
+              label={translate("settings.editor.githubAlerts")}
+              onChange={() =>
+                onUpdatePreferences({
+                  ...preferences,
+                  extendedSyntax: {
+                    ...preferences.extendedSyntax,
+                    githubAlerts: !preferences.extendedSyntax.githubAlerts
+                  }
+                })
+              }
+            />
+          }
+        />
+      </SettingsSection>
     </>
   );
 }

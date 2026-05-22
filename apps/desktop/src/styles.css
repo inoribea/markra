@@ -2263,6 +2263,13 @@
     @apply line-through;
   }
 
+  .markdown-paper .markra-live-mark-highlight {
+    @apply rounded-[3px] px-[0.12em] py-[0.02em];
+    background: color-mix(in srgb, #d4a72c 28%, transparent);
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+
   .markdown-paper .markra-live-mark-inlineCode {
     @apply rounded-[3px] border border-(--border-default) bg-(--bg-code) px-[0.28em] py-[0.12em] text-[0.88em] text-(--text-primary);
     font-family: Menlo, Consolas, "DejaVu Sans Mono", monospace;

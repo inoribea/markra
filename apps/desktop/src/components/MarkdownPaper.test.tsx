@@ -42,7 +42,7 @@ import {
   readAiTableAnchorsFromView
 } from "../hooks/useEditorController";
 import type { AiSelectionContext } from "@markra/ai";
-import type { EditorTheme } from "../lib/settings/app-settings";
+import type { EditorTheme, ExtendedSyntaxPreferences } from "../lib/settings/app-settings";
 
 async function renderEditor(
   initialContent = "",
@@ -57,6 +57,7 @@ async function renderEditor(
     readOnly?: boolean;
     resolveImageSrc?: (src: string) => string;
     markdownShortcuts?: MarkdownShortcutMap;
+    extendedSyntax?: ExtendedSyntaxPreferences;
     workspaceFiles?: Array<{
       kind?: "asset" | "folder";
       name: string;
@@ -74,6 +75,7 @@ async function renderEditor(
       onEditorReady={(instance) => {
         editor = instance;
       }}
+      extendedSyntax={options.extendedSyntax}
       markdownShortcuts={options.markdownShortcuts}
       onMarkdownChange={options.onMarkdownChange ?? (() => {})}
       onSaveClipboardImage={options.onSaveClipboardImage}
@@ -4674,6 +4676,33 @@ describe("MarkdownPaper editing", () => {
     await settleMarkdownListener();
   });
 
+  it("renders ==text== highlight syntax only when the extension is enabled", async () => {
+    const enabled = await renderEditor("", {
+      extendedSyntax: {
+        githubAlerts: true,
+        highlight: true
+      }
+    });
+    typeText(enabled.view, "==marked==");
+
+    expectLiveMark(enabled.container, "highlight", "marked");
+    expectMarkdownDelimiterText(enabled.container, "==");
+    expect(enabled.container.querySelector(".ProseMirror")?.textContent).toBe("==marked==");
+
+    const disabled = await renderEditor("", {
+      extendedSyntax: {
+        githubAlerts: true,
+        highlight: false
+      }
+    });
+    typeText(disabled.view, "==marked==");
+
+    expect(disabled.container.querySelector(".ProseMirror .markra-live-mark-highlight")).not.toBeInTheDocument();
+    expectHiddenMarkdownDelimiters(disabled.container, 0);
+    expect(disabled.container.querySelector(".ProseMirror")?.textContent).toBe("==marked==");
+    await settleMarkdownListener();
+  });
+
   it("keeps typing inside filled inline delimiters styled", async () => {
     const strong = await renderEditor();
     typeText(strong.view, "****");
@@ -4967,6 +4996,19 @@ describe("MarkdownPaper editing", () => {
 
     const serializeMarkdown = editor.action((ctx) => ctx.get(serializerCtx));
     expect(serializeMarkdown(view.state.doc)).toContain(source);
+  });
+
+  it("leaves GitHub-style alert blockquotes plain when the extension is disabled", async () => {
+    const { container } = await renderEditor("> [!NOTE]\n> Keep this in mind.", {
+      extendedSyntax: {
+        githubAlerts: false,
+        highlight: true
+      }
+    });
+
+    expect(container.querySelector(".ProseMirror blockquote.markra-callout")).not.toBeInTheDocument();
+    expect(container.querySelector(".ProseMirror blockquote")).toHaveTextContent("[!NOTE] Keep this in mind.");
+    expect(container.querySelector(".markra-callout-title")).not.toBeInTheDocument();
   });
 
   it("marks empty callout source lines so the display has no spacer paragraph", async () => {

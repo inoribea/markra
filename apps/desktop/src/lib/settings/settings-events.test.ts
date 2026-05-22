@@ -122,6 +122,10 @@ describe("settings events", () => {
       closeAiCommandOnAgentPanelOpen: true,
       contentWidth: "wide" as const,
       contentWidthPx: 1120,
+      extendedSyntax: {
+        githubAlerts: true,
+        highlight: true
+      },
       imageUpload: {
         fileNamePattern: "{name}-{timestamp}",
         provider: "webdav",

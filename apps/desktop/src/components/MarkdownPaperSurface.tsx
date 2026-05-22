@@ -37,6 +37,7 @@ import {
   type SlashCommandLabels
 } from "@markra/editor";
 import { t, type AppLanguage } from "@markra/shared";
+import type { ExtendedSyntaxPreferences } from "../lib/settings/app-settings";
 import type { MarkdownDocumentLinkFile } from "../lib/document-links";
 import { markraDocumentLinkCompletionPlugin } from "./document-link-completion";
 import {
@@ -51,6 +52,7 @@ export type MarkdownPaperSurfaceProps = {
   documentPath?: string | null;
   initialContent: string;
   language: AppLanguage;
+  extendedSyntax?: ExtendedSyntaxPreferences;
   markdownShortcuts?: MarkdownShortcutMap;
   onEditorReady: (editor: Editor | null, options?: { autoFocus?: boolean }) => unknown;
   onMarkdownChange: (content: string) => unknown;
@@ -119,6 +121,7 @@ function markraReadOnlyTransactionGuard(readOnlyRef: { current: boolean }) {
 function MilkdownEditorSurface({
   autoFocus,
   documentPath,
+  extendedSyntax,
   initialContent,
   language,
   markdownShortcuts,
@@ -142,6 +145,8 @@ function MilkdownEditorSurface({
   const workspaceFilesRef = useRef(workspaceFiles ?? []);
   const externalLinkOpeningEnabled = Boolean(openExternalUrl);
   const markdownDocumentLabel = t(language, "app.markdownDocument");
+  const githubAlertsEnabled = extendedSyntax?.githubAlerts ?? true;
+  const highlightSyntaxEnabled = extendedSyntax?.highlight ?? true;
   const shortcutsSignature = markdownShortcutSignature(markdownShortcuts);
   const normalizedMarkdownShortcuts = useMemo(
     () => normalizeMarkdownShortcuts(markdownShortcuts),
@@ -255,9 +260,14 @@ function MilkdownEditorSurface({
         .use(markraMathRemarkPlugin)
         .use(markraCommonmark)
         .use(markraGfm)
-        .use(markraCalloutSerializerPlugin)
-        .use(markraCalloutPlugin)
-        .use(markraSlashCommands(slashCommandLabels))
+        .use(markraCalloutSerializerPlugin);
+
+      if (githubAlertsEnabled) {
+        editor.use(markraCalloutPlugin);
+      }
+
+      editor
+        .use(markraSlashCommands(slashCommandLabels, { callout: githubAlertsEnabled }))
         .use(markraMathSourcePlugin)
         .use(markraMarkdownShortcuts(normalizedMarkdownShortcuts))
         .use(markraCodeBlockPlugin)
@@ -290,7 +300,7 @@ function MilkdownEditorSurface({
             resolveImageSrc
           })
         )
-        .use(markraLiveMarkdownPlugin);
+        .use(markraLiveMarkdownPlugin({ highlight: highlightSyntaxEnabled }));
 
       if (externalLinkOpeningEnabled) {
         editor.use(
@@ -315,6 +325,8 @@ function MilkdownEditorSurface({
     },
     [
       externalLinkOpeningEnabled,
+      githubAlertsEnabled,
+      highlightSyntaxEnabled,
       language,
       markdownDocumentLabel,
       normalizedMarkdownShortcuts,

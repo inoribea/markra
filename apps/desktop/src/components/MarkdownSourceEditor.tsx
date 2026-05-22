@@ -15,6 +15,7 @@ import {
   editorCustomContentWidthMin,
   type EditorContentWidth
 } from "../lib/editor-width";
+import type { ExtendedSyntaxPreferences } from "../lib/settings/app-settings";
 import { EditorWidthResizer } from "./EditorWidthResizer";
 
 type MarkdownSourceEditorProps = {
@@ -25,6 +26,7 @@ type MarkdownSourceEditorProps = {
   contentWidthMax?: number;
   contentWidthMin?: number;
   contentWidthPx?: number | null;
+  extendedSyntax?: ExtendedSyntaxPreferences;
   language?: AppLanguage;
   lineHeight?: number;
   onChange: (content: string) => unknown;
@@ -43,19 +45,28 @@ type FenceState = {
   marker: "`" | "~" | null;
 };
 
-function renderMarkdownSourceHighlight(content: string) {
+type MarkdownSourceHighlightOptions = {
+  githubAlerts: boolean;
+};
+
+function renderMarkdownSourceHighlight(content: string, options: MarkdownSourceHighlightOptions) {
   const lines = content.split("\n");
   const fenceState: FenceState = { marker: null };
 
   return lines.map((line, index) => (
     <Fragment key={`line-${index}`}>
-      {renderMarkdownSourceLine(line, index, fenceState)}
+      {renderMarkdownSourceLine(line, index, fenceState, options)}
       {index < lines.length - 1 ? "\n" : null}
     </Fragment>
   ));
 }
 
-function renderMarkdownSourceLine(line: string, lineIndex: number, fenceState: FenceState): ReactNode {
+function renderMarkdownSourceLine(
+  line: string,
+  lineIndex: number,
+  fenceState: FenceState,
+  options: MarkdownSourceHighlightOptions
+): ReactNode {
   const fenceMatch = line.match(/^(\s*)(`{3,}|~{3,})(.*)$/u);
   if (fenceMatch && (!fenceState.marker || fenceMatch[2]!.startsWith(fenceState.marker))) {
     const [, indent = "", fence = "", info = ""] = fenceMatch;
@@ -88,7 +99,7 @@ function renderMarkdownSourceLine(line: string, lineIndex: number, fenceState: F
   if (blockquoteMatch) {
     const calloutContent = blockquoteMatch[2] ?? "";
     const calloutPrefixMatch = /^(\s*)(.*)$/u.exec(calloutContent);
-    const calloutMarker = parseMarkdownCalloutMarker(calloutPrefixMatch?.[2] ?? "");
+    const calloutMarker = options.githubAlerts ? parseMarkdownCalloutMarker(calloutPrefixMatch?.[2] ?? "") : null;
     if (calloutMarker && calloutPrefixMatch) {
       const [, prefix = "", content = ""] = calloutPrefixMatch;
       const markerIndex = content.indexOf(calloutMarker.source);
@@ -220,6 +231,7 @@ export function MarkdownSourceEditor({
   contentWidthMax = editorCustomContentWidthMax,
   contentWidthMin = editorCustomContentWidthMin,
   contentWidthPx = null,
+  extendedSyntax,
   language = "en",
   lineHeight = 1.65,
   onChange,
@@ -236,6 +248,7 @@ export function MarkdownSourceEditor({
   const sourceLayerRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const resolvedContentWidth = contentWidthPx ?? editorContentWidthPixels[contentWidth];
+  const githubAlertsEnabled = extendedSyntax?.githubAlerts ?? true;
   const paperStyle = {
     fontSize: `${bodyFontSize}px`,
     lineHeight,
@@ -291,7 +304,7 @@ export function MarkdownSourceEditor({
             className="markdown-source-highlight pointer-events-none m-0 min-h-[calc(100vh-176px)] whitespace-pre-wrap wrap-break-word border-0 bg-transparent p-0 font-mono text-[0.94em] leading-[inherit] tracking-normal"
             aria-hidden="true"
           >
-            <code>{renderMarkdownSourceHighlight(content)}</code>
+            <code>{renderMarkdownSourceHighlight(content, { githubAlerts: githubAlertsEnabled })}</code>
           </pre>
           {searchMatches.length > 0 ? (
             <pre

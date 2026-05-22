@@ -178,6 +178,10 @@ describe("Markra workspace", () => {
       closeAiCommandOnAgentPanelOpen: false,
       contentWidth: "default",
       contentWidthPx: null,
+      extendedSyntax: {
+        githubAlerts: true,
+        highlight: true
+      },
       imageUpload: defaultImageUpload,
       lineHeight: 1.65,
       markdownShortcuts: defaultMarkdownShortcuts,
@@ -218,6 +222,10 @@ describe("Markra workspace", () => {
         closeAiCommandOnAgentPanelOpen: false,
         contentWidth: "default",
         contentWidthPx: null,
+        extendedSyntax: {
+          githubAlerts: true,
+          highlight: true
+        },
         imageUpload: defaultImageUpload,
         lineHeight: 1.65,
         markdownShortcuts: defaultMarkdownShortcuts,
@@ -246,6 +254,10 @@ describe("Markra workspace", () => {
         closeAiCommandOnAgentPanelOpen: false,
         contentWidth: "default",
         contentWidthPx: null,
+        extendedSyntax: {
+          githubAlerts: true,
+          highlight: true
+        },
         imageUpload: defaultImageUpload,
         lineHeight: 1.65,
         markdownShortcuts: defaultMarkdownShortcuts,
@@ -702,6 +714,10 @@ describe("Markra workspace", () => {
       closeAiCommandOnAgentPanelOpen: false,
       contentWidth: "default" as const,
       contentWidthPx: null,
+      extendedSyntax: {
+        githubAlerts: true,
+        highlight: true
+      },
       imageUpload: defaultImageUpload,
       lineHeight: 1.65,
       markdownShortcuts: defaultMarkdownShortcuts,
@@ -804,6 +820,10 @@ describe("Markra workspace", () => {
       closeAiCommandOnAgentPanelOpen: false,
       contentWidth: "default",
       contentWidthPx: null,
+      extendedSyntax: {
+        githubAlerts: true,
+        highlight: true
+      },
       imageUpload: defaultImageUpload,
       lineHeight: 1.65,
       markdownShortcuts: {
@@ -2578,6 +2598,10 @@ describe("Markra workspace", () => {
       closeAiCommandOnAgentPanelOpen: false,
       contentWidth: "default",
       contentWidthPx: null,
+      extendedSyntax: {
+        githubAlerts: true,
+        highlight: true
+      },
       imageUpload: defaultImageUpload,
       lineHeight: 1.65,
       markdownShortcuts: defaultMarkdownShortcuts,
@@ -2706,6 +2730,10 @@ describe("Markra workspace", () => {
       closeAiCommandOnAgentPanelOpen: false,
       contentWidth: "default",
       contentWidthPx: null,
+      extendedSyntax: {
+        githubAlerts: true,
+        highlight: true
+      },
       imageUpload: defaultImageUpload,
       lineHeight: 1.65,
       markdownShortcuts: defaultMarkdownShortcuts,
