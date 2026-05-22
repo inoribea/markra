@@ -273,6 +273,38 @@ describe("EditorSettings", () => {
     });
   });
 
+  it("toggles highlight syntax from the extended syntax settings", () => {
+    const onUpdatePreferences = vi.fn();
+    const preferences: EditorPreferences = {
+      ...defaultEditorPreferences,
+      extendedSyntax: {
+        highlight: true
+      }
+    };
+
+    render(
+      <EditorSettings
+        preferences={preferences}
+        translate={translate}
+        onUpdatePreferences={onUpdatePreferences}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: "Extended syntax" })).toBeInTheDocument();
+    const highlightSwitch = screen.getByRole("switch", { name: "Highlight syntax" });
+    expect(highlightSwitch).toBeChecked();
+    expect(screen.getByRole("note", { name: "GitHub compatibility" })).toHaveTextContent("==text==");
+
+    fireEvent.click(highlightSwitch);
+
+    expect(onUpdatePreferences).toHaveBeenCalledWith({
+      ...preferences,
+      extendedSyntax: {
+        highlight: false
+      }
+    });
+  });
+
   it("edits the selected lightweight markdown template from a two-pane settings layout", () => {
     const onDeleteTemplate = vi.fn();
     const onUpdateTemplate = vi.fn();

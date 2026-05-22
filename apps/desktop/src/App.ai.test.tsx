@@ -133,6 +133,9 @@ describe("Markra AI workspace", () => {
       closeAiCommandOnAgentPanelOpen: false,
       contentWidth: "default",
       contentWidthPx: null,
+      extendedSyntax: {
+        highlight: true
+      },
       imageUpload: {
         fileNamePattern: "pasted-image-{timestamp}",
         provider: "local",

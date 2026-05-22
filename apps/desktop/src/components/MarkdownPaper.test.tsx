@@ -42,7 +42,7 @@ import {
   readAiTableAnchorsFromView
 } from "../hooks/useEditorController";
 import type { AiSelectionContext } from "@markra/ai";
-import type { EditorTheme } from "../lib/settings/app-settings";
+import type { EditorTheme, ExtendedSyntaxPreferences } from "../lib/settings/app-settings";
 
 async function renderEditor(
   initialContent = "",
@@ -57,6 +57,7 @@ async function renderEditor(
     readOnly?: boolean;
     resolveImageSrc?: (src: string) => string;
     markdownShortcuts?: MarkdownShortcutMap;
+    extendedSyntax?: ExtendedSyntaxPreferences;
     workspaceFiles?: Array<{
       kind?: "asset" | "folder";
       name: string;
@@ -74,6 +75,7 @@ async function renderEditor(
       onEditorReady={(instance) => {
         editor = instance;
       }}
+      extendedSyntax={options.extendedSyntax}
       markdownShortcuts={options.markdownShortcuts}
       onMarkdownChange={options.onMarkdownChange ?? (() => {})}
       onSaveClipboardImage={options.onSaveClipboardImage}
@@ -4666,6 +4668,31 @@ describe("MarkdownPaper editing", () => {
 
     expect(strikethrough.container.querySelector(".ProseMirror del")).toHaveTextContent("2");
     expect(strikethrough.container.querySelector(".ProseMirror")?.textContent).toBe("2");
+    await settleMarkdownListener();
+  });
+
+  it("renders ==text== highlight syntax only when the extension is enabled", async () => {
+    const enabled = await renderEditor("", {
+      extendedSyntax: {
+        highlight: true
+      }
+    });
+    typeText(enabled.view, "==marked==");
+
+    expectLiveMark(enabled.container, "highlight", "marked");
+    expectMarkdownDelimiterText(enabled.container, "==");
+    expect(enabled.container.querySelector(".ProseMirror")?.textContent).toBe("==marked==");
+
+    const disabled = await renderEditor("", {
+      extendedSyntax: {
+        highlight: false
+      }
+    });
+    typeText(disabled.view, "==marked==");
+
+    expect(disabled.container.querySelector(".ProseMirror .markra-live-mark-highlight")).not.toBeInTheDocument();
+    expectHiddenMarkdownDelimiters(disabled.container, 0);
+    expect(disabled.container.querySelector(".ProseMirror")?.textContent).toBe("==marked==");
     await settleMarkdownListener();
   });
 

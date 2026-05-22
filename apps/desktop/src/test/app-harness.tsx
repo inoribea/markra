@@ -169,6 +169,9 @@ vi.mock("../lib/settings/app-settings", () => ({
     closeAiCommandOnAgentPanelOpen: false,
     contentWidth: "default",
     contentWidthPx: null,
+    extendedSyntax: {
+      highlight: true
+    },
     imageUpload: {
       fileNamePattern: "pasted-image-{timestamp}",
       provider: "local",
@@ -310,6 +313,9 @@ vi.mock("../lib/settings/app-settings", () => ({
     closeAiCommandOnAgentPanelOpen: false,
     contentWidth: "default",
     contentWidthPx: null,
+    extendedSyntax: {
+      highlight: true
+    },
     imageUpload: {
       fileNamePattern: "pasted-image-{timestamp}",
       provider: "local",
@@ -797,6 +803,9 @@ export function installAppTestHarness() {
       closeAiCommandOnAgentPanelOpen: false,
       contentWidth: "default",
       contentWidthPx: null,
+      extendedSyntax: {
+        highlight: true
+      },
       imageUpload: {
         fileNamePattern: "pasted-image-{timestamp}",
         provider: "local",

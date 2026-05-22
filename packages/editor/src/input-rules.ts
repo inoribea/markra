@@ -5,12 +5,17 @@ import { type EditorState, Plugin, PluginKey, TextSelection } from "@milkdown/ki
 import { Decoration, DecorationSet, type EditorView } from "@milkdown/kit/prose/view";
 import { $prose } from "@milkdown/kit/utils";
 
-type LiveMarkdownKind = "strong" | "emphasis" | "inlineCode" | "strikethrough";
+type LiveMarkdownKind = "strong" | "emphasis" | "inlineCode" | "strikethrough" | "highlight";
+
+export type MarkraLiveMarkdownOptions = {
+  highlight?: boolean;
+};
 
 type LiveMarkdownSpec = {
   markers: string[];
   pattern: RegExp;
   marks: LiveMarkdownMark[];
+  kinds?: LiveMarkdownKind[];
 };
 
 type LiveMarkdownMark = {
@@ -55,6 +60,10 @@ type LiveMarkdownPluginState = {
 
 const liveMarkdownKey = new PluginKey("markra-live-markdown");
 
+function getLiveMarkdownKinds(spec: LiveMarkdownSpec) {
+  return spec.kinds ?? spec.marks.map((mark) => mark.kind);
+}
+
 function overlaps(ranges: LiveMarkdownRange[], from: number, to: number) {
   return ranges.some((range) => from < range.to && to > range.from);
 }
@@ -82,7 +91,7 @@ function getLiveMarkdownRanges(text: string, specs: LiveMarkdownSpec[]) {
       if (content.length === 0) continue;
 
       ranges.push({
-        kinds: spec.marks.map((mark) => mark.kind),
+        kinds: getLiveMarkdownKinds(spec),
         marker,
         from,
         to,
@@ -141,7 +150,8 @@ function getFoldedMarkdownRangeAtCursor(
     if (cursor < from || cursor > to) return;
 
     const spec = specs.find((candidate) =>
-      candidate.marks.every((mark) => node.marks.some((nodeMark) => nodeMark.type === mark.markType))
+      candidate.marks.length > 0
+      && candidate.marks.every((mark) => node.marks.some((nodeMark) => nodeMark.type === mark.markType))
     );
     if (!spec) return;
 
@@ -149,7 +159,7 @@ function getFoldedMarkdownRangeAtCursor(
       marker: getMarkerFromFoldedMarks(node.marks, spec),
       from,
       to,
-      kinds: spec.marks.map((mark) => mark.kind)
+      kinds: getLiveMarkdownKinds(spec)
     };
   });
 
@@ -275,6 +285,8 @@ function finalizeActiveLiveMarkdown(view: EditorView, specs: LiveMarkdownSpec[])
 
   // Enter commits the active raw Markdown span into real ProseMirror marks.
   const { blockStart, range } = active;
+  if (range.marks.length === 0) return false;
+
   const marks = range.marks.map((mark) => mark.markType.create(mark.getAttr?.(range.marker)));
   const markedText = view.state.schema.text(range.content, marks);
   const start = blockStart + range.from;
@@ -362,7 +374,7 @@ function moveCursorOverLiveMarkdownDelimiter(
   return true;
 }
 
-export const markraLiveMarkdownPlugin = $prose((ctx) => {
+export const markraLiveMarkdownPlugin = (options: MarkraLiveMarkdownOptions = {}) => $prose((ctx) => {
   const specs: LiveMarkdownSpec[] = [
     {
       markers: ["`"],
@@ -417,6 +429,16 @@ export const markraLiveMarkdownPlugin = $prose((ctx) => {
         }
       ]
     },
+    ...(options.highlight ?? true
+      ? [
+          {
+            markers: ["=="],
+            pattern: /(?<!=)==[^=\n][^\n]*?==(?!=)/g,
+            marks: [],
+            kinds: ["highlight"]
+          } satisfies LiveMarkdownSpec
+        ]
+      : []),
     {
       markers: ["*"],
       pattern: /(?<!\*)\*(?!\*)[^*\n]*?(?<!\*)\*(?!\*)/g,

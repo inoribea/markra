@@ -2519,6 +2519,7 @@ export default function App() {
                           documentKey={activeTabId}
                           documentPath={document.path}
                           editorTheme={appTheme.editorTheme}
+                          extendedSyntax={editorPreferences.preferences.extendedSyntax}
                           initialContent={document.content}
                           language={appLanguage.language}
                           lineHeight={editorPreferences.preferences.lineHeight}
@@ -2604,6 +2605,7 @@ export default function App() {
                       documentKey={activeTabId}
                       documentPath={document.path}
                       editorTheme={appTheme.editorTheme}
+                      extendedSyntax={editorPreferences.preferences.extendedSyntax}
                       initialContent={document.content}
                       language={appLanguage.language}
                       lineHeight={editorPreferences.preferences.lineHeight}
@@ -2657,6 +2659,7 @@ export default function App() {
                         documentKey={sideDocumentTab.id}
                         documentPath={sideDocumentTab.path}
                         editorTheme={appTheme.editorTheme}
+                        extendedSyntax={editorPreferences.preferences.extendedSyntax}
                         language={appLanguage.language}
                         lineHeight={editorPreferences.preferences.lineHeight}
                         markdownShortcuts={editorPreferences.preferences.markdownShortcuts}

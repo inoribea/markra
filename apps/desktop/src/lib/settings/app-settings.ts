@@ -102,6 +102,9 @@ export type AiAgentPreferences = {
   thinkingEnabled: boolean;
   webSearchEnabled: boolean;
 };
+export type ExtendedSyntaxPreferences = {
+  highlight: boolean;
+};
 export type EditorPreferences = {
   aiQuickActionPrompts: AiQuickActionPrompts;
   aiSelectionDisplayMode: AiSelectionDisplayMode;
@@ -111,6 +114,7 @@ export type EditorPreferences = {
   closeAiCommandOnAgentPanelOpen: boolean;
   contentWidth: EditorContentWidth;
   contentWidthPx: number | null;
+  extendedSyntax: ExtendedSyntaxPreferences;
   imageUpload: ImageUploadSettings;
   lineHeight: number;
   markdownShortcuts: MarkdownShortcutBindings;
@@ -223,6 +227,10 @@ export const defaultImageUploadSettings: ImageUploadSettings = {
   }
 };
 
+export const defaultExtendedSyntaxPreferences: ExtendedSyntaxPreferences = {
+  highlight: true
+};
+
 export const defaultEditorPreferences: EditorPreferences = {
   aiQuickActionPrompts: { ...defaultAiQuickActionPrompts },
   aiSelectionDisplayMode: "command",
@@ -232,6 +240,7 @@ export const defaultEditorPreferences: EditorPreferences = {
   closeAiCommandOnAgentPanelOpen: false,
   contentWidth: "default",
   contentWidthPx: null,
+  extendedSyntax: { ...defaultExtendedSyntaxPreferences },
   imageUpload: defaultImageUploadSettings,
   lineHeight: 1.65,
   markdownShortcuts: defaultMarkdownShortcuts,
@@ -732,6 +741,7 @@ export function normalizeEditorPreferences(value: unknown): EditorPreferences {
   if (typeof value !== "object" || value === null) {
     return {
       ...defaultEditorPreferences,
+      extendedSyntax: { ...defaultExtendedSyntaxPreferences },
       titlebarActions: [...defaultTitlebarActions]
     };
   }
@@ -759,6 +769,7 @@ export function normalizeEditorPreferences(value: unknown): EditorPreferences {
       ? (preferences.contentWidth as EditorContentWidth)
       : defaultEditorPreferences.contentWidth,
     contentWidthPx: normalizeEditorContentWidthPx(preferences.contentWidthPx),
+    extendedSyntax: normalizeExtendedSyntaxPreferences(preferences.extendedSyntax),
     imageUpload: normalizeImageUploadSettings(preferences.imageUpload),
     lineHeight: editorLineHeightOptions.includes(preferences.lineHeight as typeof editorLineHeightOptions[number])
       ? Number(preferences.lineHeight)
@@ -781,6 +792,21 @@ export function normalizeEditorPreferences(value: unknown): EditorPreferences {
     titlebarActions: normalizeTitlebarActions(preferences.titlebarActions),
     showWordCount:
       typeof preferences.showWordCount === "boolean" ? preferences.showWordCount : defaultEditorPreferences.showWordCount
+  };
+}
+
+function normalizeExtendedSyntaxPreferences(value: unknown): ExtendedSyntaxPreferences {
+  if (typeof value !== "object" || value === null) {
+    return { ...defaultExtendedSyntaxPreferences };
+  }
+
+  const preferences = value as Partial<ExtendedSyntaxPreferences>;
+
+  return {
+    highlight:
+      typeof preferences.highlight === "boolean"
+        ? preferences.highlight
+        : defaultExtendedSyntaxPreferences.highlight
   };
 }
 

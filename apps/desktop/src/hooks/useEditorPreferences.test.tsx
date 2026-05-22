@@ -20,6 +20,9 @@ vi.mock("../lib/settings/app-settings", () => ({
     closeAiCommandOnAgentPanelOpen: false,
     contentWidth: "default",
     contentWidthPx: null,
+    extendedSyntax: {
+      highlight: true
+    },
     imageUpload: {
       fileNamePattern: "pasted-image-{timestamp}",
       provider: "local",
@@ -96,6 +99,9 @@ describe("useEditorPreferences", () => {
       closeAiCommandOnAgentPanelOpen: false,
       contentWidth: "default",
       contentWidthPx: null,
+      extendedSyntax: {
+        highlight: true
+      },
       imageUpload: {
         fileNamePattern: "pasted-image-{timestamp}",
         provider: "local",
@@ -173,6 +179,9 @@ describe("useEditorPreferences", () => {
         closeAiCommandOnAgentPanelOpen: true,
         contentWidth: "wide",
         contentWidthPx: 1120,
+        extendedSyntax: {
+          highlight: false
+        },
         imageUpload: {
           fileNamePattern: "{name}-{timestamp}",
           provider: "webdav",

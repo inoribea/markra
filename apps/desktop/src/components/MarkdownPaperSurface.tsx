@@ -38,6 +38,7 @@ import {
   type SlashCommandLabels
 } from "@markra/editor";
 import { t, type AppLanguage } from "@markra/shared";
+import type { ExtendedSyntaxPreferences } from "../lib/settings/app-settings";
 import type { MarkdownDocumentLinkFile } from "../lib/document-links";
 import { markraDocumentLinkCompletionPlugin } from "./document-link-completion";
 import {
@@ -52,6 +53,7 @@ export type MarkdownPaperSurfaceProps = {
   documentPath?: string | null;
   initialContent: string;
   language: AppLanguage;
+  extendedSyntax?: ExtendedSyntaxPreferences;
   markdownShortcuts?: MarkdownShortcutMap;
   onEditorReady: (editor: Editor | null, options?: { autoFocus?: boolean }) => unknown;
   onMarkdownChange: (content: string) => unknown;
@@ -120,6 +122,7 @@ function markraReadOnlyTransactionGuard(readOnlyRef: { current: boolean }) {
 function MilkdownEditorSurface({
   autoFocus,
   documentPath,
+  extendedSyntax,
   initialContent,
   language,
   markdownShortcuts,
@@ -143,6 +146,7 @@ function MilkdownEditorSurface({
   const workspaceFilesRef = useRef(workspaceFiles ?? []);
   const externalLinkOpeningEnabled = Boolean(openExternalUrl);
   const markdownDocumentLabel = t(language, "app.markdownDocument");
+  const highlightSyntaxEnabled = extendedSyntax?.highlight ?? true;
   const shortcutsSignature = markdownShortcutSignature(markdownShortcuts);
   const normalizedMarkdownShortcuts = useMemo(
     () => normalizeMarkdownShortcuts(markdownShortcuts),
@@ -297,7 +301,7 @@ function MilkdownEditorSurface({
             resolveImageSrc
           })
         )
-        .use(markraLiveMarkdownPlugin);
+        .use(markraLiveMarkdownPlugin({ highlight: highlightSyntaxEnabled }));
 
       if (externalLinkOpeningEnabled) {
         editor.use(
@@ -322,6 +326,7 @@ function MilkdownEditorSurface({
     },
     [
       externalLinkOpeningEnabled,
+      highlightSyntaxEnabled,
       language,
       markdownDocumentLabel,
       normalizedMarkdownShortcuts,
