@@ -103,6 +103,7 @@ export type AiAgentPreferences = {
   webSearchEnabled: boolean;
 };
 export type ExtendedSyntaxPreferences = {
+  githubAlerts: boolean;
   highlight: boolean;
 };
 export type EditorPreferences = {
@@ -228,6 +229,7 @@ export const defaultImageUploadSettings: ImageUploadSettings = {
 };
 
 export const defaultExtendedSyntaxPreferences: ExtendedSyntaxPreferences = {
+  githubAlerts: true,
   highlight: true
 };
 
@@ -803,6 +805,10 @@ function normalizeExtendedSyntaxPreferences(value: unknown): ExtendedSyntaxPrefe
   const preferences = value as Partial<ExtendedSyntaxPreferences>;
 
   return {
+    githubAlerts:
+      typeof preferences.githubAlerts === "boolean"
+        ? preferences.githubAlerts
+        : defaultExtendedSyntaxPreferences.githubAlerts,
     highlight:
       typeof preferences.highlight === "boolean"
         ? preferences.highlight

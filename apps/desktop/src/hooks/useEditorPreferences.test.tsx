@@ -21,6 +21,7 @@ vi.mock("../lib/settings/app-settings", () => ({
     contentWidth: "default",
     contentWidthPx: null,
     extendedSyntax: {
+      githubAlerts: true,
       highlight: true
     },
     imageUpload: {
@@ -100,6 +101,7 @@ describe("useEditorPreferences", () => {
       contentWidth: "default",
       contentWidthPx: null,
       extendedSyntax: {
+        githubAlerts: true,
         highlight: true
       },
       imageUpload: {
@@ -180,6 +182,7 @@ describe("useEditorPreferences", () => {
         contentWidth: "wide",
         contentWidthPx: 1120,
         extendedSyntax: {
+          githubAlerts: true,
           highlight: false
         },
         imageUpload: {

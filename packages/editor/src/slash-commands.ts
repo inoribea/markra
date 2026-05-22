@@ -39,6 +39,10 @@ export type SlashCommandLabels = {
   commands: Record<SlashCommandId, string>;
 };
 
+export type SlashCommandOptions = {
+  callout?: boolean;
+};
+
 type SlashCommandRange = {
   from: number;
   query: string;
@@ -312,9 +316,10 @@ function createSlashCommands(
     tableHeader: ReturnType<typeof tableHeaderSchema.type>;
     tableHeaderRow: ReturnType<typeof tableHeaderRowSchema.type>;
     tableRow: ReturnType<typeof tableRowSchema.type>;
-  }
+  },
+  options: SlashCommandOptions = {}
 ): SlashCommandSpec[] {
-  return [
+  const slashCommands: SlashCommandSpec[] = [
     {
       aliases: ["text", "plain"],
       id: "paragraph",
@@ -356,13 +361,19 @@ function createSlashCommands(
       id: "quote",
       label: labels.commands.quote,
       run: (view, range) => runCommandAfterDeletingSlash(view, range, wrapIn(commands.quote))
-    },
-    {
+    }
+  ];
+
+  if (options.callout ?? true) {
+    slashCommands.push({
       aliases: ["alert", "note", "info", "tip", "warning", "caution", "danger", "important"],
       id: "callout",
       label: labels.commands.callout,
       run: (view, range) => runCalloutCommand(view, range, commands)
-    },
+    });
+  }
+
+  slashCommands.push(
     {
       aliases: ["code", "pre", "fence"],
       id: "codeBlock",
@@ -375,7 +386,9 @@ function createSlashCommands(
       label: labels.commands.table,
       run: (view, range) => runTableCommand(view, range, commands)
     }
-  ];
+  );
+
+  return slashCommands;
 }
 
 function dispatchSlashCommandSelection(view: EditorView, selectedIndex: number) {
@@ -587,7 +600,10 @@ class SlashCommandMenuView {
   };
 }
 
-export const markraSlashCommands = (labels: Partial<SlashCommandLabels> = {}) => $prose((ctx) => {
+export const markraSlashCommands = (
+  labels: Partial<SlashCommandLabels> = {},
+  options: SlashCommandOptions = {}
+) => $prose((ctx) => {
   const resolvedLabels: SlashCommandLabels = {
     menu: labels.menu ?? defaultSlashCommandLabels.menu,
     noResults: labels.noResults ?? defaultSlashCommandLabels.noResults,
@@ -608,7 +624,7 @@ export const markraSlashCommands = (labels: Partial<SlashCommandLabels> = {}) =>
     tableHeader: tableHeaderSchema.type(ctx),
     tableHeaderRow: tableHeaderRowSchema.type(ctx),
     tableRow: tableRowSchema.type(ctx)
-  });
+  }, options);
 
   return new Plugin<SlashCommandState>({
     key: slashCommandsKey,

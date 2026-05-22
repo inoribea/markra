@@ -71,6 +71,7 @@ export function SideDocumentPane({
           content={content}
           contentWidth={contentWidth}
           contentWidthPx={contentWidthPx}
+          extendedSyntax={extendedSyntax}
           language={language}
           lineHeight={lineHeight}
           onChange={onChange}

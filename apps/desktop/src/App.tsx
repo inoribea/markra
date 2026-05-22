@@ -2562,6 +2562,7 @@ export default function App() {
                           content={document.content}
                           contentWidth={activeEditorContentWidth}
                           contentWidthPx={activeEditorContentWidthPx}
+                          extendedSyntax={editorPreferences.preferences.extendedSyntax}
                           language={appLanguage.language}
                           lineHeight={editorPreferences.preferences.lineHeight}
                           onChange={handleSourceMarkdownChange}
@@ -2583,6 +2584,7 @@ export default function App() {
                       content={document.content}
                       contentWidth={activeEditorContentWidth}
                       contentWidthPx={activeEditorContentWidthPx}
+                      extendedSyntax={editorPreferences.preferences.extendedSyntax}
                       language={appLanguage.language}
                       lineHeight={editorPreferences.preferences.lineHeight}
                       onChange={handleSourceMarkdownChange}
@@ -2769,6 +2771,7 @@ export default function App() {
       </main>
       <MarkdownExportDocument
         snapshot={exportSnapshot}
+        extendedSyntax={editorPreferences.preferences.extendedSyntax}
         resolveImageSrc={resolveExportImageSrc}
         onRendered={handleRenderedExport}
       />

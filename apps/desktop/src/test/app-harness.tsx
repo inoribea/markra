@@ -170,6 +170,7 @@ vi.mock("../lib/settings/app-settings", () => ({
     contentWidth: "default",
     contentWidthPx: null,
     extendedSyntax: {
+      githubAlerts: true,
       highlight: true
     },
     imageUpload: {
@@ -314,6 +315,7 @@ vi.mock("../lib/settings/app-settings", () => ({
     contentWidth: "default",
     contentWidthPx: null,
     extendedSyntax: {
+      githubAlerts: true,
       highlight: true
     },
     imageUpload: {
@@ -804,6 +806,7 @@ export function installAppTestHarness() {
       contentWidth: "default",
       contentWidthPx: null,
       extendedSyntax: {
+        githubAlerts: true,
         highlight: true
       },
       imageUpload: {

@@ -1,5 +1,4 @@
 import {
-  AlertTriangle,
   Bot,
   ChevronDown,
   Code2,
@@ -529,28 +528,6 @@ function SettingsSwitch({
   onChange: () => unknown;
 }) {
   return <Switch checked={checked} label={label} onCheckedChange={onChange} />;
-}
-
-function SettingsCompatibilityNote({
-  children,
-  title
-}: {
-  children: ReactNode;
-  title: string;
-}) {
-  return (
-    <div
-      aria-label={title}
-      className="mx-0 mb-4 -mt-1 flex gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100"
-      role="note"
-    >
-      <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.9} />
-      <div className="min-w-0">
-        <p className="m-0 text-[12px] leading-5 font-[680] tracking-normal">{title}</p>
-        <p className="m-0 mt-0.5 text-[12px] leading-4.5 font-[450]">{children}</p>
-      </div>
-    </div>
-  );
 }
 
 function SettingsSelect({
@@ -2350,30 +2327,44 @@ export function EditorSettings({
         />
       </SettingsSection>
       <SettingsSection label={translate("settings.sections.extendedSyntax")}>
-        <div>
-          <SettingsRow
-            title={translate("settings.editor.highlightSyntax")}
-            description={translate("settings.editor.highlightSyntaxDescription")}
-            action={
-              <SettingsSwitch
-                checked={preferences.extendedSyntax.highlight}
-                label={translate("settings.editor.highlightSyntax")}
-                onChange={() =>
-                  onUpdatePreferences({
-                    ...preferences,
-                    extendedSyntax: {
-                      ...preferences.extendedSyntax,
-                      highlight: !preferences.extendedSyntax.highlight
-                    }
-                  })
-                }
-              />
-            }
-          />
-          <SettingsCompatibilityNote title={translate("settings.editor.highlightSyntaxWarningTitle")}>
-            {translate("settings.editor.highlightSyntaxWarningDescription")}
-          </SettingsCompatibilityNote>
-        </div>
+        <SettingsRow
+          title={translate("settings.editor.highlightSyntax")}
+          description={translate("settings.editor.highlightSyntaxDescription")}
+          action={
+            <SettingsSwitch
+              checked={preferences.extendedSyntax.highlight}
+              label={translate("settings.editor.highlightSyntax")}
+              onChange={() =>
+                onUpdatePreferences({
+                  ...preferences,
+                  extendedSyntax: {
+                    ...preferences.extendedSyntax,
+                    highlight: !preferences.extendedSyntax.highlight
+                  }
+                })
+              }
+            />
+          }
+        />
+        <SettingsRow
+          title={translate("settings.editor.githubAlerts")}
+          description={translate("settings.editor.githubAlertsDescription")}
+          action={
+            <SettingsSwitch
+              checked={preferences.extendedSyntax.githubAlerts}
+              label={translate("settings.editor.githubAlerts")}
+              onChange={() =>
+                onUpdatePreferences({
+                  ...preferences,
+                  extendedSyntax: {
+                    ...preferences.extendedSyntax,
+                    githubAlerts: !preferences.extendedSyntax.githubAlerts
+                  }
+                })
+              }
+            />
+          }
+        />
       </SettingsSection>
     </>
   );

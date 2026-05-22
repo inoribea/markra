@@ -134,6 +134,7 @@ describe("Markra AI workspace", () => {
       contentWidth: "default",
       contentWidthPx: null,
       extendedSyntax: {
+        githubAlerts: true,
         highlight: true
       },
       imageUpload: {

@@ -50,6 +50,24 @@ describe("MarkdownSourceEditor", () => {
     expect(container.querySelector(".markdown-source-token-quote-marker")).toHaveTextContent(">");
   });
 
+  it("leaves GitHub-style alert markers plain when the extension is disabled", () => {
+    const content = "> [!TIP]\n> Keep notes portable.";
+
+    const { container } = render(
+      <MarkdownSourceEditor
+        content={content}
+        extendedSyntax={{
+          githubAlerts: false,
+          highlight: true
+        }}
+        onChange={() => {}}
+      />
+    );
+
+    expect(container.querySelector(".markdown-source-token-callout")).not.toBeInTheDocument();
+    expect(container.querySelector(".markdown-source-token-quote-marker")).toHaveTextContent(">");
+  });
+
   it("renders exact search highlights in source mode", () => {
     const { container } = render(
       <MarkdownSourceEditor

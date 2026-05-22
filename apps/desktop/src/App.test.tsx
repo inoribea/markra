@@ -179,6 +179,7 @@ describe("Markra workspace", () => {
       contentWidth: "default",
       contentWidthPx: null,
       extendedSyntax: {
+        githubAlerts: true,
         highlight: true
       },
       imageUpload: defaultImageUpload,
@@ -222,6 +223,7 @@ describe("Markra workspace", () => {
         contentWidth: "default",
         contentWidthPx: null,
         extendedSyntax: {
+          githubAlerts: true,
           highlight: true
         },
         imageUpload: defaultImageUpload,
@@ -253,6 +255,7 @@ describe("Markra workspace", () => {
         contentWidth: "default",
         contentWidthPx: null,
         extendedSyntax: {
+          githubAlerts: true,
           highlight: true
         },
         imageUpload: defaultImageUpload,
@@ -712,6 +715,7 @@ describe("Markra workspace", () => {
       contentWidth: "default" as const,
       contentWidthPx: null,
       extendedSyntax: {
+        githubAlerts: true,
         highlight: true
       },
       imageUpload: defaultImageUpload,
@@ -817,6 +821,7 @@ describe("Markra workspace", () => {
       contentWidth: "default",
       contentWidthPx: null,
       extendedSyntax: {
+        githubAlerts: true,
         highlight: true
       },
       imageUpload: defaultImageUpload,
@@ -2594,6 +2599,7 @@ describe("Markra workspace", () => {
       contentWidth: "default",
       contentWidthPx: null,
       extendedSyntax: {
+        githubAlerts: true,
         highlight: true
       },
       imageUpload: defaultImageUpload,
@@ -2725,6 +2731,7 @@ describe("Markra workspace", () => {
       contentWidth: "default",
       contentWidthPx: null,
       extendedSyntax: {
+        githubAlerts: true,
         highlight: true
       },
       imageUpload: defaultImageUpload,

@@ -146,6 +146,7 @@ function MilkdownEditorSurface({
   const workspaceFilesRef = useRef(workspaceFiles ?? []);
   const externalLinkOpeningEnabled = Boolean(openExternalUrl);
   const markdownDocumentLabel = t(language, "app.markdownDocument");
+  const githubAlertsEnabled = extendedSyntax?.githubAlerts ?? true;
   const highlightSyntaxEnabled = extendedSyntax?.highlight ?? true;
   const shortcutsSignature = markdownShortcutSignature(markdownShortcuts);
   const normalizedMarkdownShortcuts = useMemo(
@@ -266,9 +267,14 @@ function MilkdownEditorSurface({
         .use(markraMathRemarkPlugin)
         .use(markraCommonmark)
         .use(markraGfm)
-        .use(markraCalloutSerializerPlugin)
-        .use(markraCalloutPlugin)
-        .use(markraSlashCommands(slashCommandLabels))
+        .use(markraCalloutSerializerPlugin);
+
+      if (githubAlertsEnabled) {
+        editor.use(markraCalloutPlugin);
+      }
+
+      editor
+        .use(markraSlashCommands(slashCommandLabels, { callout: githubAlertsEnabled }))
         .use(markraMathSourcePlugin)
         .use(markraMarkdownShortcuts(normalizedMarkdownShortcuts))
         .use(markraCodeBlockPlugin)
@@ -326,6 +332,7 @@ function MilkdownEditorSurface({
     },
     [
       externalLinkOpeningEnabled,
+      githubAlertsEnabled,
       highlightSyntaxEnabled,
       language,
       markdownDocumentLabel,

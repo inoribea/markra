@@ -273,11 +273,12 @@ describe("EditorSettings", () => {
     });
   });
 
-  it("toggles highlight syntax from the extended syntax settings", () => {
+  it("toggles extension syntax features from the extended syntax settings", () => {
     const onUpdatePreferences = vi.fn();
     const preferences: EditorPreferences = {
       ...defaultEditorPreferences,
       extendedSyntax: {
+        githubAlerts: true,
         highlight: true
       }
     };
@@ -292,15 +293,28 @@ describe("EditorSettings", () => {
 
     expect(screen.getByRole("heading", { name: "Extended syntax" })).toBeInTheDocument();
     const highlightSwitch = screen.getByRole("switch", { name: "Highlight syntax" });
+    const githubAlertsSwitch = screen.getByRole("switch", { name: "GitHub-style warning boxes" });
     expect(highlightSwitch).toBeChecked();
-    expect(screen.getByRole("note", { name: "GitHub compatibility" })).toHaveTextContent("==text==");
+    expect(githubAlertsSwitch).toBeChecked();
+    expect(screen.queryByRole("note", { name: "GitHub compatibility" })).not.toBeInTheDocument();
 
     fireEvent.click(highlightSwitch);
 
     expect(onUpdatePreferences).toHaveBeenCalledWith({
       ...preferences,
       extendedSyntax: {
+        githubAlerts: true,
         highlight: false
+      }
+    });
+
+    fireEvent.click(githubAlertsSwitch);
+
+    expect(onUpdatePreferences).toHaveBeenCalledWith({
+      ...preferences,
+      extendedSyntax: {
+        githubAlerts: false,
+        highlight: true
       }
     });
   });

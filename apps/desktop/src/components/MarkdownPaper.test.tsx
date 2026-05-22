@@ -4674,6 +4674,7 @@ describe("MarkdownPaper editing", () => {
   it("renders ==text== highlight syntax only when the extension is enabled", async () => {
     const enabled = await renderEditor("", {
       extendedSyntax: {
+        githubAlerts: true,
         highlight: true
       }
     });
@@ -4685,6 +4686,7 @@ describe("MarkdownPaper editing", () => {
 
     const disabled = await renderEditor("", {
       extendedSyntax: {
+        githubAlerts: true,
         highlight: false
       }
     });
@@ -4946,6 +4948,19 @@ describe("MarkdownPaper editing", () => {
 
     const serializeMarkdown = editor.action((ctx) => ctx.get(serializerCtx));
     expect(serializeMarkdown(view.state.doc)).toContain(source);
+  });
+
+  it("leaves GitHub-style alert blockquotes plain when the extension is disabled", async () => {
+    const { container } = await renderEditor("> [!NOTE]\n> Keep this in mind.", {
+      extendedSyntax: {
+        githubAlerts: false,
+        highlight: true
+      }
+    });
+
+    expect(container.querySelector(".ProseMirror blockquote.markra-callout")).not.toBeInTheDocument();
+    expect(container.querySelector(".ProseMirror blockquote")).toHaveTextContent("[!NOTE] Keep this in mind.");
+    expect(container.querySelector(".markra-callout-title")).not.toBeInTheDocument();
   });
 
   it("marks empty callout source lines so the display has no spacer paragraph", async () => {

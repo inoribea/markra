@@ -162,6 +162,7 @@ describe("app settings", () => {
       contentWidth: "default",
       contentWidthPx: null,
       extendedSyntax: {
+        githubAlerts: true,
         highlight: true
       },
       imageUpload: {
@@ -437,6 +438,7 @@ describe("app settings", () => {
         }
       },
       extendedSyntax: {
+        githubAlerts: true,
         highlight: true
       },
       lineHeight: 1.65,
@@ -508,25 +510,31 @@ describe("app settings", () => {
 
   it("normalizes extended syntax preferences", () => {
     expect(normalizeEditorPreferences({}).extendedSyntax).toEqual({
+      githubAlerts: true,
       highlight: true
     });
     expect(normalizeEditorPreferences({
       extendedSyntax: {
+        githubAlerts: false,
         highlight: false
       }
     }).extendedSyntax).toEqual({
+      githubAlerts: false,
       highlight: false
     });
     expect(normalizeEditorPreferences({
       extendedSyntax: {
+        githubAlerts: "maybe",
         highlight: "nope"
       }
     }).extendedSyntax).toEqual({
+      githubAlerts: true,
       highlight: true
     });
     expect(normalizeEditorPreferences({
       extendedSyntax: null
     }).extendedSyntax).toEqual({
+      githubAlerts: true,
       highlight: true
     });
   });
@@ -709,6 +717,7 @@ describe("app settings", () => {
       contentWidth: "default",
       contentWidthPx: null,
       extendedSyntax: {
+        githubAlerts: true,
         highlight: true
       },
       imageUpload: {
@@ -760,6 +769,7 @@ describe("app settings", () => {
       contentWidth: "wide",
       contentWidthPx: 1120,
       extendedSyntax: {
+        githubAlerts: false,
         highlight: false
       },
       imageUpload: {
@@ -819,6 +829,7 @@ describe("app settings", () => {
       contentWidth: "wide",
       contentWidthPx: 1120,
       extendedSyntax: {
+        githubAlerts: false,
         highlight: false
       },
       imageUpload: {
