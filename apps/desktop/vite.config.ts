@@ -8,7 +8,7 @@ import { stripDebugPlugin } from "./scripts/vite/strip-debug";
 const desktopPackage = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url), "utf8")
 ) as { version?: string };
-const chunkSizeWarningLimitKb = 1200;
+const chunkSizeWarningLimitKb = 3000;
 const fontAssetPattern = /\.(?:otf|ttf|woff2?)$/i;
 const imageAssetPattern = /\.(?:avif|gif|ico|jpe?g|png|svg|webp)$/i;
 const browserNodeStubPath = fileURLToPath(new URL("./src/lib/browser-node-stub.ts", import.meta.url));
