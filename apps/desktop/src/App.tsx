@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type UIEvent as ReactUIEvent
@@ -24,7 +25,11 @@ import {
 import { MarkdownFileTreeDrawer } from "./components/MarkdownFileTreeDrawer";
 import { MarkdownPaper } from "./components/MarkdownPaper";
 import { MarkdownSourceEditor } from "./components/MarkdownSourceEditor";
-import { MarkdownTabsBar, type MarkdownTabsBarDocumentItem } from "./components/MarkdownTabsBar";
+import {
+  MarkdownTabsBar,
+  markdownTabDragDataType,
+  type MarkdownTabsBarDocumentItem
+} from "./components/MarkdownTabsBar";
 import { NativeTitleBar } from "./components/NativeTitleBar";
 import { QuietStatus } from "./components/QuietStatus";
 import { SideDocumentPane } from "./components/SideDocumentPane";
@@ -278,6 +283,7 @@ export default function App() {
   const [visualDocumentSearchMatches, setVisualDocumentSearchMatches] = useState<SearchRange[]>([]);
   const [splitVisualPanePercent, setSplitVisualPanePercent] = useState(defaultSplitVisualPanePercent);
   const [sideDocumentMainPanePercent, setSideDocumentMainPanePercent] = useState(defaultSideDocumentMainPanePercent);
+  const [editorTabDropTargetActive, setEditorTabDropTargetActive] = useState(false);
   const [visualEditorReadySequence, setVisualEditorReadySequence] = useState(0);
   const [exportSnapshot, setExportSnapshot] = useState<MarkdownExportSnapshot | null>(null);
   const sourceMode = editorMode === "source";
@@ -2326,10 +2332,11 @@ export default function App() {
     };
   }, [editor, restoreAiCommand, updateAiResults]);
 
-  const handleOpenTitlebarTabToSide = useCallback((tabId: string) => {
-    if (!activeTabId || tabId === activeTabId) return;
+  const handleOpenTitlebarTabToSide = useCallback((tabId: string, primaryTabId = activeTabId ?? undefined) => {
+    if (!primaryTabId || tabId === primaryTabId) return;
     const tab = documentTabs.find((candidate) => candidate.id === tabId);
-    if (!tab?.path) return;
+    const primaryTab = documentTabs.find((candidate) => candidate.id === primaryTabId);
+    if (!tab?.path || !primaryTab?.path) return;
 
     captureActiveDocumentViewState();
     setActiveImageFile(null);
@@ -2339,22 +2346,72 @@ export default function App() {
       setEditorMode("visual");
       setActiveEditorSurface("visual");
     }
-    const primaryFilePath = documentTabs.find((candidate) => candidate.id === activeTabId)?.path ?? document.path;
+    if (primaryTabId !== activeTabId) selectMarkdownTab(primaryTabId);
     openSideDocumentGroup({
-      primaryFilePath,
-      primaryTabId: activeTabId,
+      primaryFilePath: primaryTab.path,
+      primaryTabId,
       sideFilePath: tab.path,
       sideTabId: tabId
     });
   }, [
     activeTabId,
     captureActiveDocumentViewState,
-    document.path,
     documentTabs,
     handleAiCommandClose,
     openSideDocumentGroup,
+    selectMarkdownTab,
     splitMode,
     updateActiveAiSelection
+  ]);
+  const handleCancelTitlebarSideBySide = useCallback((tabId: string) => {
+    if (!sideDocumentGroup) return;
+    if (sideDocumentGroup.primaryTabId !== tabId && sideDocumentGroup.sideTabId !== tabId) return;
+
+    clearSideDocumentGroup();
+  }, [clearSideDocumentGroup, sideDocumentGroup]);
+  const draggedMarkdownTabIdFromEvent = useCallback((event: ReactDragEvent<HTMLElement>) => {
+    return event.dataTransfer.getData(markdownTabDragDataType);
+  }, []);
+  const canDropMarkdownTabOnEditor = useCallback((tabId: string) => {
+    if (!editorPreferences.preferences.showDocumentTabs || activeImageFile || !hasOpenDocument || !activeTabId) return false;
+    if (!tabId || tabId === activeTabId || tabId === sideDocumentGroup?.sideTabId) return false;
+
+    const draggedTab = documentTabs.find((tab) => tab.id === tabId);
+    const activeTab = documentTabs.find((tab) => tab.id === activeTabId);
+    return Boolean(draggedTab?.path && activeTab?.path);
+  }, [
+    activeImageFile,
+    activeTabId,
+    documentTabs,
+    editorPreferences.preferences.showDocumentTabs,
+    hasOpenDocument,
+    sideDocumentGroup?.sideTabId
+  ]);
+  const handleEditorContentDragOver = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
+    const draggedTabId = draggedMarkdownTabIdFromEvent(event);
+    if (!canDropMarkdownTabOnEditor(draggedTabId)) return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setEditorTabDropTargetActive(true);
+  }, [canDropMarkdownTabOnEditor, draggedMarkdownTabIdFromEvent]);
+  const handleEditorContentDragLeave = useCallback(() => {
+    setEditorTabDropTargetActive(false);
+  }, []);
+  const handleEditorContentDrop = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
+    const draggedTabId = draggedMarkdownTabIdFromEvent(event);
+    if (!canDropMarkdownTabOnEditor(draggedTabId)) {
+      setEditorTabDropTargetActive(false);
+      return;
+    }
+
+    event.preventDefault();
+    setEditorTabDropTargetActive(false);
+    handleOpenTitlebarTabToSide(draggedTabId);
+  }, [
+    canDropMarkdownTabOnEditor,
+    draggedMarkdownTabIdFromEvent,
+    handleOpenTitlebarTabToSide
   ]);
   const handleSideDocumentChange = useCallback((content: string) => {
     if (!sideDocumentGroup || readOnlyMode) return;
@@ -2436,6 +2493,7 @@ export default function App() {
       items={titlebarItems}
       language={appLanguage.language}
       placement="titlebar"
+      onCancelSideBySide={handleCancelTitlebarSideBySide}
       onCloseTab={handleCloseTitlebarTab}
       onNewTab={() => {
         captureActiveDocumentViewState();
@@ -2529,8 +2587,15 @@ export default function App() {
             style={{ gridTemplateColumns: `minmax(0,1fr) ${aiAgentInset}` }}
           >
             <div
-              className="editor-content-slot relative h-full min-h-0 overflow-hidden"
+              className={`editor-content-slot relative h-full min-h-0 overflow-hidden transition-[box-shadow] duration-150 ease-out ${
+                editorTabDropTargetActive ? "ring-2 ring-(--accent)/30 ring-inset" : ""
+              }`}
               data-document-search-open={documentSearchOpen && documentSearchAvailable ? "true" : undefined}
+              data-document-tab-editor-drop-target="true"
+              data-document-tab-drop-target={editorTabDropTargetActive ? "true" : undefined}
+              onDragLeave={handleEditorContentDragLeave}
+              onDragOver={handleEditorContentDragOver}
+              onDrop={handleEditorContentDrop}
             >
               {documentSearchOpen && documentSearchAvailable ? (
                 <DocumentSearchBar

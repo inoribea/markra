@@ -785,6 +785,14 @@
     user-select: none;
   }
 
+  html[data-document-tab-dragging="true"],
+  html[data-document-tab-dragging="true"] body,
+  html[data-document-tab-dragging="true"] * {
+    cursor: grabbing !important;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
   .markdown-source-highlight code {
     font-family: inherit;
   }

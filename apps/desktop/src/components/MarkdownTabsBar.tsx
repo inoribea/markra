@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent as ReactDragEvent,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent
+} from "react";
 import { Columns2, FileText, ImageIcon, Pencil, Plus, X } from "lucide-react";
 import { Button, IconButton, PopoverSurface } from "@markra/ui";
 import { t, type AppLanguage } from "@markra/shared";
@@ -16,9 +23,10 @@ type MarkdownTabsBarProps = {
   items: MarkdownTabsBarItem[];
   language?: AppLanguage;
   placement?: "editor" | "titlebar";
+  onCancelSideBySide?: (tabId: string) => unknown;
   onCloseTab: (tabId: string) => unknown;
   onNewTab: () => unknown;
-  onOpenTabToSide?: (tabId: string) => unknown;
+  onOpenTabToSide?: (tabId: string, primaryTabId?: string) => unknown;
   onRenameTab?: (tab: MarkdownTabsBarDocumentItem, name: string) => unknown;
   onSelectTab: (tabId: string) => unknown;
 };
@@ -29,11 +37,29 @@ type TabContextMenuState = {
   y: number;
 };
 
+type PointerTabDragState = {
+  dragging: boolean;
+  startX: number;
+  startY: number;
+  tabId: string;
+};
+
+type PointerTabDragPreview = {
+  tabId: string;
+  x: number;
+  y: number;
+};
+
+export const markdownTabDragDataType = "application/x-markra-document-tab";
+const pointerTabDragThresholdPx = 6;
+const pointerTabDragPreviewOffsetPx = 12;
+
 export function MarkdownTabsBar({
   activeTabId,
   items,
   language = "en",
   placement = "editor",
+  onCancelSideBySide,
   onCloseTab,
   onNewTab,
   onOpenTabToSide,
@@ -47,6 +73,20 @@ export function MarkdownTabsBar({
   const renameCancelledRef = useRef(false);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const [contextMenu, setContextMenu] = useState<TabContextMenuState | null>(null);
+  const [draggingTabId, setDraggingTabId] = useState<string | null>(null);
+  const [dragOverTabId, setDragOverTabId] = useState<string | null>(null);
+  const [pointerTabDragPreview, setPointerTabDragPreview] = useState<PointerTabDragPreview | null>(null);
+  const pointerTabDragRef = useRef<PointerTabDragState | null>(null);
+  const pointerDragCleanupRef = useRef<(() => unknown) | null>(null);
+  const pointerEditorDropTargetRef = useRef<HTMLElement | null>(null);
+  const suppressClickTabIdRef = useRef<string | null>(null);
+
+  const setPageDocumentTabDragging = () => {
+    document.documentElement.setAttribute("data-document-tab-dragging", "true");
+  };
+  const clearPageDocumentTabDragging = () => {
+    document.documentElement.removeAttribute("data-document-tab-dragging");
+  };
 
   useEffect(() => {
     if (!renameInputRef.current) return;
@@ -74,6 +114,12 @@ export function MarkdownTabsBar({
     };
   }, [contextMenu]);
 
+  useEffect(() => () => {
+    pointerDragCleanupRef.current?.();
+    pointerDragCleanupRef.current = null;
+    clearPageDocumentTabDragging();
+  }, []);
+
   const tabItemGroups = items.map((item) => Array.isArray(item) ? item : [item]);
   const documentItems = tabItemGroups.flatMap((item) => item);
   const sideGroupedTabIds = new Set(
@@ -83,6 +129,10 @@ export function MarkdownTabsBar({
   if (documentItems.length === 0) return null;
 
   const titlebarPlacement = placement === "titlebar";
+  const pointerTabDragPreviewTab = pointerTabDragPreview
+    ? documentItems.find((tab) => tab.id === pointerTabDragPreview.tabId) ?? null
+    : null;
+  const PointerTabDragPreviewIcon = pointerTabDragPreviewTab?.displayKind === "image" ? ImageIcon : FileText;
   const contextMenuTab = contextMenu ? documentItems.find((tab) => tab.id === contextMenu.tabId) ?? null : null;
   const contextMenuTabItemIndex = contextMenuTab
     ? tabItemGroups.findIndex((item) => item.some((tab) => tab.id === contextMenuTab.id))
@@ -95,12 +145,158 @@ export function MarkdownTabsBar({
   const contextMenuRightTabIds = contextMenuTabItemIndex >= 0
     ? tabItemGroups.slice(contextMenuTabItemIndex + 1).flatMap((item) => item.map((tab) => tab.id))
     : [];
-  const contextMenuTabCanOpenToSide =
+  const contextMenuTabIsSideBySide = contextMenuTab
+    ? tabItemGroups.some((item) => item.length > 1 && item.some((tab) => tab.id === contextMenuTab.id))
+    : false;
+  const tabCanParticipateInSideBySide = (tab: MarkdownTabsBarDocumentItem | null | undefined) =>
     Boolean(onOpenTabToSide) &&
-    Boolean(contextMenuTab?.path) &&
-    contextMenuTab?.displayKind !== "image" &&
-    contextMenuTab?.id !== activeTabId &&
-    !sideGroupedTabIds.has(contextMenuTab?.id ?? "");
+    Boolean(tab?.path) &&
+    tab?.displayKind !== "image";
+  const tabCanOpenToSideFromMenu = (tab: MarkdownTabsBarDocumentItem | null | undefined) =>
+    tabCanParticipateInSideBySide(tab) &&
+    tab?.id !== activeTabId &&
+    !sideGroupedTabIds.has(tab?.id ?? "");
+  const tabCanDragToSide = (tab: MarkdownTabsBarDocumentItem | null | undefined) =>
+    tabCanParticipateInSideBySide(tab) && !sideGroupedTabIds.has(tab?.id ?? "");
+  const tabCanAcceptSideDrop = (tab: MarkdownTabsBarDocumentItem | null | undefined) =>
+    tabCanParticipateInSideBySide(tab) && !sideGroupedTabIds.has(tab?.id ?? "");
+  const contextMenuTabCanOpenToSide = tabCanOpenToSideFromMenu(contextMenuTab);
+  const tabAcceptsSideDrop = (targetTab: MarkdownTabsBarDocumentItem, draggedTab: MarkdownTabsBarDocumentItem | null) => {
+    return draggedTab?.id !== targetTab.id && tabCanDragToSide(draggedTab) && tabCanAcceptSideDrop(targetTab);
+  };
+  const clearPointerEditorDropTarget = () => {
+    if (!pointerEditorDropTargetRef.current) return;
+
+    pointerEditorDropTargetRef.current.removeAttribute("data-document-tab-pointer-drop-target");
+    pointerEditorDropTargetRef.current = null;
+  };
+  const setPointerEditorDropTarget = (target: HTMLElement | null) => {
+    if (pointerEditorDropTargetRef.current === target) return;
+
+    clearPointerEditorDropTarget();
+    if (!target) return;
+
+    target.setAttribute("data-document-tab-pointer-drop-target", "true");
+    pointerEditorDropTargetRef.current = target;
+  };
+  const hitTestPointerDropTarget = (event: PointerEvent) => {
+    const target = document.elementFromPoint(event.clientX, event.clientY);
+    const tabTarget = target?.closest<HTMLElement>("[data-document-tab-id]");
+    const editorTarget = target?.closest<HTMLElement>("[data-document-tab-editor-drop-target='true']");
+
+    return {
+      editorTarget,
+      targetTabId: tabTarget?.dataset.documentTabId ?? null
+    };
+  };
+  const updatePointerDropFeedback = (event: PointerEvent, draggedTab: MarkdownTabsBarDocumentItem) => {
+    const { editorTarget, targetTabId } = hitTestPointerDropTarget(event);
+    const targetTab = targetTabId ? documentItems.find((tab) => tab.id === targetTabId) ?? null : null;
+
+    if (targetTab && tabAcceptsSideDrop(targetTab, draggedTab)) {
+      setDragOverTabId(targetTab.id);
+      setPointerEditorDropTarget(null);
+      return;
+    }
+
+    if (editorTarget && draggedTab.id !== activeTabId) {
+      setDragOverTabId(null);
+      setPointerEditorDropTarget(editorTarget);
+      return;
+    }
+
+    setDragOverTabId(null);
+    setPointerEditorDropTarget(null);
+  };
+  const finishPointerTabDrag = (event: PointerEvent | null, commit: boolean) => {
+    const pointerDrag = pointerTabDragRef.current;
+    pointerTabDragRef.current = null;
+    pointerDragCleanupRef.current?.();
+    pointerDragCleanupRef.current = null;
+    clearPageDocumentTabDragging();
+    clearPointerEditorDropTarget();
+    setDraggingTabId(null);
+    setDragOverTabId(null);
+    setPointerTabDragPreview(null);
+
+    if (!pointerDrag?.dragging) return;
+
+    suppressClickTabIdRef.current = pointerDrag.tabId;
+    window.setTimeout(() => {
+      if (suppressClickTabIdRef.current === pointerDrag.tabId) suppressClickTabIdRef.current = null;
+    }, 0);
+    if (!commit || !event) return;
+
+    const draggedTab = documentItems.find((tab) => tab.id === pointerDrag.tabId) ?? null;
+    if (!draggedTab || !tabCanDragToSide(draggedTab)) return;
+
+    const { editorTarget, targetTabId } = hitTestPointerDropTarget(event);
+    const targetTab = targetTabId ? documentItems.find((tab) => tab.id === targetTabId) ?? null : null;
+
+    if (targetTab && tabAcceptsSideDrop(targetTab, draggedTab)) {
+      onOpenTabToSide?.(draggedTab.id, targetTab.id);
+      return;
+    }
+
+    if (editorTarget && draggedTab.id !== activeTabId) onOpenTabToSide?.(draggedTab.id);
+  };
+  const handleWindowPointerMove = (event: PointerEvent) => {
+    const pointerDrag = pointerTabDragRef.current;
+    if (!pointerDrag) return;
+
+    const draggedTab = documentItems.find((tab) => tab.id === pointerDrag.tabId) ?? null;
+    if (!draggedTab || !tabCanDragToSide(draggedTab)) return;
+
+    const movedDistance = Math.hypot(event.clientX - pointerDrag.startX, event.clientY - pointerDrag.startY);
+    if (!pointerDrag.dragging && movedDistance < pointerTabDragThresholdPx) return;
+    if (!pointerDrag.dragging) {
+      pointerTabDragRef.current = {
+        ...pointerDrag,
+        dragging: true
+      };
+      setPageDocumentTabDragging();
+      setDraggingTabId(pointerDrag.tabId);
+    }
+
+    setPointerTabDragPreview({
+      tabId: pointerDrag.tabId,
+      x: event.clientX,
+      y: event.clientY
+    });
+    event.preventDefault();
+    updatePointerDropFeedback(event, draggedTab);
+  };
+  const handleWindowPointerUp = (event: PointerEvent) => {
+    finishPointerTabDrag(event, true);
+  };
+  const handleWindowPointerCancel = (event: PointerEvent) => {
+    finishPointerTabDrag(event, false);
+  };
+  const handleWindowBlur = () => {
+    finishPointerTabDrag(null, false);
+  };
+  const handleTabPointerDown = (event: ReactPointerEvent, tab: MarkdownTabsBarDocumentItem) => {
+    if (event.button !== 0 || !tabCanDragToSide(tab)) return;
+
+    pointerDragCleanupRef.current?.();
+    clearPageDocumentTabDragging();
+    pointerTabDragRef.current = {
+      dragging: false,
+      startX: event.clientX,
+      startY: event.clientY,
+      tabId: tab.id
+    };
+    window.addEventListener("pointermove", handleWindowPointerMove);
+    window.addEventListener("pointerup", handleWindowPointerUp);
+    window.addEventListener("pointercancel", handleWindowPointerCancel);
+    window.addEventListener("blur", handleWindowBlur);
+    pointerDragCleanupRef.current = () => {
+      window.removeEventListener("pointermove", handleWindowPointerMove);
+      window.removeEventListener("pointerup", handleWindowPointerUp);
+      window.removeEventListener("pointercancel", handleWindowPointerCancel);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
+  };
   const startRenamingTab = (tab: MarkdownTabsBarDocumentItem) => {
     if (!tab.path || !onRenameTab) return;
 
@@ -148,6 +344,17 @@ export function MarkdownTabsBar({
     setContextMenu(null);
     action();
   };
+  const handlePreventNativeTabDrag = (event: ReactDragEvent) => {
+    event.preventDefault();
+  };
+  const handleSelectTabClick = (tab: MarkdownTabsBarDocumentItem, selectTabId: string) => {
+    if (suppressClickTabIdRef.current === tab.id) {
+      suppressClickTabIdRef.current = null;
+      return;
+    }
+
+    onSelectTab(selectTabId);
+  };
   const renderTabButton = (tab: MarkdownTabsBarDocumentItem, active: boolean, selectTabId = tab.id) => {
     const TabIcon = tab.displayKind === "image" ? ImageIcon : FileText;
     const renaming = tab.id === renamingTabId;
@@ -182,11 +389,15 @@ export function MarkdownTabsBar({
         className={`flex h-full min-w-0 items-center gap-1.5 rounded-l-md px-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) ${
           active ? "text-(--text-heading)" : "text-(--text-secondary)"
         }`}
+        draggable={false}
         type="button"
         role="tab"
         aria-selected={active}
-        onClick={() => onSelectTab(selectTabId)}
+        data-document-tab-id={tab.id}
+        onClick={() => handleSelectTabClick(tab, selectTabId)}
         onDoubleClick={() => startRenamingTab(tab)}
+        onDragStart={handlePreventNativeTabDrag}
+        onPointerDown={(event) => handleTabPointerDown(event, tab)}
       >
         <TabIcon aria-hidden="true" className="shrink-0 opacity-65" size={13} />
         <span className="min-w-0 truncate">{tab.name || "Untitled.md"}</span>
@@ -210,18 +421,25 @@ export function MarkdownTabsBar({
   );
   const renderDocumentTab = (tab: MarkdownTabsBarDocumentItem) => {
     const active = tab.id === activeTabId;
+    const dragged = tab.id === draggingTabId;
+    const sideDropTarget = tab.id === dragOverTabId;
 
     return (
       <div
         className={`group/tab grid h-7 max-w-52 min-w-28 grid-cols-[minmax(0,1fr)_auto] items-center rounded-md border transition-colors duration-150 ease-out ${
           titlebarPlacement ? "" : "mb-1"
         } ${
-          active
+          sideDropTarget
+            ? "border-(--accent) bg-(--bg-active) text-(--text-heading)"
+            : active
             ? "border-(--border-default) bg-(--bg-active) text-(--text-heading)"
             : "border-transparent bg-transparent text-(--text-secondary) hover:bg-(--bg-hover) hover:text-(--text-heading)"
-        }`}
+        } ${dragged ? "opacity-60" : ""}`}
+        data-document-tab-id={tab.id}
+        draggable={false}
         key={tab.id}
         onContextMenu={(event) => openTabContextMenu(event, tab)}
+        onDragStart={handlePreventNativeTabDrag}
       >
         {renderTabButton(tab, active)}
         {renderCloseTabButton(tab, active)}
@@ -241,14 +459,19 @@ export function MarkdownTabsBar({
       >
         {group.map((tab, tabIndex) => {
           const active = tab.id === activeTabId;
+          const dragged = tab.id === draggingTabId;
+          const sideDropTarget = tab.id === dragOverTabId;
 
           return (
             <div
               className={`group/tab grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center transition-colors duration-150 ease-out ${
                 tabIndex > 0 ? "border-l border-(--border-default)" : ""
-              } ${active ? "bg-(--bg-active)" : "bg-transparent"}`}
+              } ${sideDropTarget || active ? "bg-(--bg-active)" : "bg-transparent"} ${sideDropTarget ? "outline outline-1 outline-(--accent) -outline-offset-1" : ""} ${dragged ? "opacity-60" : ""}`}
+              data-document-tab-id={tab.id}
+              draggable={false}
               key={tab.id}
               onContextMenu={(event) => openTabContextMenu(event, tab)}
+              onDragStart={handlePreventNativeTabDrag}
             >
               {renderTabButton(tab, active, groupPrimaryTabId)}
               {renderCloseTabButton(tab, active, true)}
@@ -261,7 +484,6 @@ export function MarkdownTabsBar({
 
   return (
     <section
-      data-tauri-drag-region={titlebarPlacement ? "true" : undefined}
       className={
         titlebarPlacement
           ? "document-tabs document-tabs-titlebar h-10 min-w-0 w-full bg-transparent"
@@ -293,6 +515,21 @@ export function MarkdownTabsBar({
           />
         ) : null}
       </div>
+      {pointerTabDragPreview && pointerTabDragPreviewTab ? (
+        <div
+          aria-hidden="true"
+          className="document-tab-drag-preview pointer-events-none fixed top-0 left-0 z-50 flex h-7 max-w-52 min-w-28 items-center gap-1.5 rounded-md border border-(--border-default) bg-(--bg-primary)/96 px-2 text-[12px] leading-5 font-[560] text-(--text-heading) shadow-[0_12px_28px_color-mix(in_srgb,var(--text-heading)_18%,transparent)] backdrop-blur-[2px] will-change-transform"
+          style={{
+            transform: `translate3d(${pointerTabDragPreview.x + pointerTabDragPreviewOffsetPx}px, ${pointerTabDragPreview.y + pointerTabDragPreviewOffsetPx}px, 0)`
+          }}
+        >
+          <PointerTabDragPreviewIcon aria-hidden="true" className="shrink-0 opacity-65" size={13} />
+          <span className="min-w-0 truncate">{pointerTabDragPreviewTab.name || "Untitled.md"}</span>
+          {pointerTabDragPreviewTab.dirty ? (
+            <span className="size-1.25 shrink-0 rounded-full bg-(--accent)" aria-hidden="true" />
+          ) : null}
+        </div>
+      ) : null}
       {contextMenu && contextMenuTab ? (
         <div
           ref={contextMenuRef}
@@ -332,6 +569,18 @@ export function MarkdownTabsBar({
               >
                 <Columns2 aria-hidden="true" className="shrink-0 text-(--text-secondary)" size={14} />
                 <span className="truncate">{label("app.openDocumentToSide")}</span>
+              </Button>
+            ) : null}
+            {onCancelSideBySide && contextMenuTabIsSideBySide ? (
+              <Button
+                className="w-full justify-start rounded-md text-left"
+                size="sm"
+                variant="ghost"
+                role="menuitem"
+                onClick={() => runTabContextMenuAction(() => onCancelSideBySide(contextMenuTab.id))}
+              >
+                <Columns2 aria-hidden="true" className="shrink-0 text-(--text-secondary)" size={14} />
+                <span className="truncate">{label("app.cancelSideBySideDocuments")}</span>
               </Button>
             ) : null}
             <Button

@@ -97,6 +97,17 @@ const defaultImageUpload = {
   }
 };
 
+function mockElementFromPoint(element: Element) {
+  const mock = vi.fn(() => element);
+
+  Object.defineProperty(document, "elementFromPoint", {
+    configurable: true,
+    value: mock
+  });
+
+  return mock;
+}
+
 function createStoredEditorPreferences(
   overrides: Partial<Parameters<typeof mockedSaveStoredEditorPreferences>[0]> = {}
 ): Parameters<typeof mockedSaveStoredEditorPreferences>[0] {
@@ -1224,7 +1235,8 @@ describe("Markra workspace", () => {
     expect(container.querySelector(".native-title-slot")).toHaveStyle({
       marginLeft: "56px"
     });
-    expect(container.querySelector(".native-title-slot")).toHaveAttribute("data-tauri-drag-region");
+    expect(container.querySelector(".native-title-slot")).not.toHaveAttribute("data-tauri-drag-region");
+    expect(container.querySelector(".document-tabs-drag-spacer")).toHaveAttribute("data-tauri-drag-region");
     expect(container.querySelector(".native-title-slot")).not.toHaveStyle({ transform: "translateX(110px)" });
     expect(resizeHandle).toHaveAttribute("aria-valuemin", "220");
     expect(resizeHandle).toHaveAttribute("aria-valuemax", "440");
@@ -1986,6 +1998,179 @@ describe("Markra workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close tab third.md" }));
     await waitFor(() => expect(container.querySelector(".editor-side-by-side-surface")).not.toBeInTheDocument());
     expect(screen.getByRole("tab", { name: /guide\.md/ })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("opens a pointer-dragged active document tab beside the tab it is released on", async () => {
+    const firstPath = "/mock-files/vault/docs/alpha.md";
+    const secondPath = "/mock-files/vault/docs/beta.md";
+    mockedOpenNativeMarkdownPath.mockResolvedValue({
+      kind: "folder",
+      folder: {
+        path: mockFolderPath,
+        name: "vault"
+      }
+    });
+    mockedListNativeMarkdownFilesForPath.mockResolvedValue([
+      { name: "alpha.md", path: firstPath, relativePath: "docs/alpha.md" },
+      { name: "beta.md", path: secondPath, relativePath: "docs/beta.md" }
+    ]);
+    mockedReadNativeMarkdownFile.mockImplementation(async (path) => {
+      if (path === firstPath) {
+        return {
+          content: "# Alpha\n\nMain",
+          name: "alpha.md",
+          path: firstPath
+        };
+      }
+
+      return {
+        content: "# Beta\n\nReference",
+        name: "beta.md",
+        path: secondPath
+      };
+    });
+    const { container } = renderApp();
+
+    fireEvent.keyDown(window, { key: "o", metaKey: true });
+    expect(await screen.findByRole("heading", { name: "vault" })).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole("button", { name: "docs" }));
+    fireEvent.click(await screen.findByRole("button", { name: "docs/alpha.md" }));
+    expect(await screen.findByText("Alpha")).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole("button", { name: "docs/beta.md" }));
+    expect(await screen.findByText("Beta")).toBeInTheDocument();
+
+    const alphaTab = screen.getByRole("tab", { name: /alpha\.md/ });
+    const betaTab = screen.getByRole("tab", { name: /beta\.md/ });
+    const elementFromPoint = mockElementFromPoint(alphaTab);
+
+    fireEvent.pointerDown(betaTab, { button: 0, clientX: 20, clientY: 12, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 80, clientY: 12, pointerId: 1 });
+    fireEvent.pointerUp(window, { clientX: 80, clientY: 12, pointerId: 1 });
+
+    await waitFor(() => expect(container.querySelector(".editor-side-by-side-surface")).toBeInTheDocument());
+    const groupedTabs = container.querySelector(".document-tabs-side-by-side-group") as HTMLElement;
+    expect(within(groupedTabs).getByRole("tab", { name: /alpha\.md/ })).toHaveAttribute("aria-selected", "true");
+    expect(within(groupedTabs).getByRole("tab", { name: /beta\.md/ })).toHaveAttribute("aria-selected", "false");
+    expect(await within(container.querySelector(".side-document-pane") as HTMLElement).findByText("Reference")).toBeInTheDocument();
+    expect(elementFromPoint).toHaveBeenCalled();
+    Reflect.deleteProperty(document, "elementFromPoint");
+  });
+
+  it("opens a pointer-dragged document tab to the side when released over the editor area", async () => {
+    const firstPath = "/mock-files/vault/docs/alpha.md";
+    const secondPath = "/mock-files/vault/docs/beta.md";
+    mockedOpenNativeMarkdownPath.mockResolvedValue({
+      kind: "folder",
+      folder: {
+        path: mockFolderPath,
+        name: "vault"
+      }
+    });
+    mockedListNativeMarkdownFilesForPath.mockResolvedValue([
+      { name: "alpha.md", path: firstPath, relativePath: "docs/alpha.md" },
+      { name: "beta.md", path: secondPath, relativePath: "docs/beta.md" }
+    ]);
+    mockedReadNativeMarkdownFile.mockImplementation(async (path) => {
+      if (path === firstPath) {
+        return {
+          content: "# Alpha\n\nReference",
+          name: "alpha.md",
+          path: firstPath
+        };
+      }
+
+      return {
+        content: "# Beta\n\nMain",
+        name: "beta.md",
+        path: secondPath
+      };
+    });
+    const { container } = renderApp();
+
+    fireEvent.keyDown(window, { key: "o", metaKey: true });
+    expect(await screen.findByRole("heading", { name: "vault" })).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole("button", { name: "docs" }));
+    fireEvent.click(await screen.findByRole("button", { name: "docs/alpha.md" }));
+    expect(await screen.findByText("Alpha")).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole("button", { name: "docs/beta.md" }));
+    expect(await screen.findByText("Beta")).toBeInTheDocument();
+
+    const alphaTab = screen.getByRole("tab", { name: /alpha\.md/ });
+    const editorArea = container.querySelector(".editor-content-slot") as HTMLElement;
+    const elementFromPoint = mockElementFromPoint(editorArea);
+
+    fireEvent.pointerDown(alphaTab, { button: 0, clientX: 20, clientY: 12, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 220, clientY: 220, pointerId: 1 });
+    expect(editorArea).toHaveAttribute("data-document-tab-pointer-drop-target", "true");
+    expect(editorArea.className).not.toContain("data-[document-tab-pointer-drop-target=true]:ring");
+    fireEvent.pointerUp(window, { clientX: 220, clientY: 220, pointerId: 1 });
+
+    await waitFor(() => expect(container.querySelector(".editor-side-by-side-surface")).toBeInTheDocument());
+    const groupedTabs = container.querySelector(".document-tabs-side-by-side-group") as HTMLElement;
+    expect(within(groupedTabs).getByRole("tab", { name: /beta\.md/ })).toHaveAttribute("aria-selected", "true");
+    expect(within(groupedTabs).getByRole("tab", { name: /alpha\.md/ })).toHaveAttribute("aria-selected", "false");
+    expect(await within(container.querySelector(".side-document-pane") as HTMLElement).findByText("Reference")).toBeInTheDocument();
+    expect(elementFromPoint).toHaveBeenCalled();
+    Reflect.deleteProperty(document, "elementFromPoint");
+  });
+
+  it("cancels a side-by-side document group from the grouped tab menu", async () => {
+    const firstPath = "/mock-files/vault/docs/alpha.md";
+    const secondPath = "/mock-files/vault/docs/beta.md";
+    mockedOpenNativeMarkdownPath.mockResolvedValue({
+      kind: "folder",
+      folder: {
+        path: mockFolderPath,
+        name: "vault"
+      }
+    });
+    mockedListNativeMarkdownFilesForPath.mockResolvedValue([
+      { name: "alpha.md", path: firstPath, relativePath: "docs/alpha.md" },
+      { name: "beta.md", path: secondPath, relativePath: "docs/beta.md" }
+    ]);
+    mockedReadNativeMarkdownFile.mockImplementation(async (path) => {
+      if (path === firstPath) {
+        return {
+          content: "# Alpha\n\nMain",
+          name: "alpha.md",
+          path: firstPath
+        };
+      }
+
+      return {
+        content: "# Beta\n\nReference",
+        name: "beta.md",
+        path: secondPath
+      };
+    });
+    const { container } = renderApp();
+
+    fireEvent.keyDown(window, { key: "o", metaKey: true });
+    expect(await screen.findByRole("heading", { name: "vault" })).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole("button", { name: "docs" }));
+    fireEvent.click(await screen.findByRole("button", { name: "docs/alpha.md" }));
+    expect(await screen.findByText("Alpha")).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole("button", { name: "docs/beta.md" }));
+    expect(await screen.findByText("Beta")).toBeInTheDocument();
+
+    fireEvent.contextMenu(screen.getByRole("tab", { name: /alpha\.md/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Open to side" }));
+    await waitFor(() => expect(container.querySelector(".editor-side-by-side-surface")).toBeInTheDocument());
+    expect(container.querySelector(".document-tabs-side-by-side-group")).toBeInTheDocument();
+
+    fireEvent.contextMenu(screen.getByRole("tab", { name: /alpha\.md/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Cancel side-by-side" }));
+
+    await waitFor(() => expect(container.querySelector(".editor-side-by-side-surface")).not.toBeInTheDocument());
+    expect(container.querySelector(".document-tabs-side-by-side-group")).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /alpha\.md/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /beta\.md/ })).toBeInTheDocument();
   });
 
   it("keeps a side-by-side tab group while selecting a standalone clean tab", async () => {

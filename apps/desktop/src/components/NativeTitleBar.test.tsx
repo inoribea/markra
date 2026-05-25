@@ -82,7 +82,9 @@ describe("NativeTitleBar", () => {
 
     expect(screen.queryByRole("heading", { name: "Draft.md" })).not.toBeInTheDocument();
     expect(screen.getByRole("tablist", { name: "Open documents" })).toBeInTheDocument();
-    expect(container.querySelector(".native-title-slot")).toHaveAttribute("data-tauri-drag-region");
+    expect(container.querySelector(".native-titlebar")).not.toHaveAttribute("data-tauri-drag-region");
+    expect(container.querySelector(".native-title-slot")).not.toHaveAttribute("data-tauri-drag-region");
+    expect(screen.getByRole("tab", { name: "Draft.md" }).closest("[data-tauri-drag-region]")).toBeNull();
     expect(container.querySelector(".native-titlebar")).toHaveClass("bg-(--bg-primary)");
     expect(container.querySelector(".native-titlebar")).not.toHaveClass("border-b");
     expect(container.querySelector(".native-titlebar")).toHaveStyle({
@@ -183,7 +185,7 @@ describe("NativeTitleBar", () => {
 
     expect(container.querySelector(".native-titlebar")).not.toHaveAttribute("data-tauri-drag-region");
     expect(container.querySelector(".document-actions")).not.toHaveAttribute("data-tauri-drag-region");
-    expect(container.querySelector(".native-title-slot")).toHaveAttribute("data-tauri-drag-region");
+    expect(container.querySelector(".native-title-slot")).not.toHaveAttribute("data-tauri-drag-region");
 
     fireEvent.click(screen.getByRole("button", { name: "Switch to source mode" }));
 

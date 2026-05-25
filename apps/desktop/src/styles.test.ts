@@ -13,6 +13,15 @@ describe("editor stylesheet", () => {
     expect(styles).toContain("%23ffffff");
   });
 
+  it("forces a grabbing cursor during document tab pointer drags", () => {
+    const styles = readFileSync(`${process.cwd()}/src/styles.css`, "utf8");
+
+    expect(styles).toContain('html[data-document-tab-dragging="true"]');
+    expect(styles).toContain('html[data-document-tab-dragging="true"] *');
+    expect(styles).toContain("cursor: grabbing !important");
+    expect(styles).toContain("user-select: none");
+  });
+
   it("includes readable Markdown table styles", () => {
     const styles = readFileSync(`${process.cwd()}/src/styles.css`, "utf8");
 
