@@ -124,7 +124,7 @@ Contributions are welcome — whether it's product experience, Markdown editing,
 
 ## Sponsors
 
-[![Sponsors](https://raw.githubusercontent.com/murongg/sponsorskit/main/public/sponsors.svg)](https://sponsorskit.vercel.app)
+[![Sponsors](https://raw.githubusercontent.com/murongg/sponsorskit/main/public/sponsors.svg)](https://sponsors.mrong.me/)
 
 ## Star History
 
