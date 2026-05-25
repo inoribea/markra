@@ -453,7 +453,7 @@ export function NativeTitleBar({
   };
 
   const renderTitleContent = (className: string, style?: CSSProperties) => (
-    <div className={className} style={style} data-tauri-drag-region>
+    <div className={className} style={style}>
       {titleContent}
     </div>
   );
@@ -526,7 +526,7 @@ export function NativeTitleBar({
       className={`native-titlebar group/titlebar fixed inset-x-0 top-0 z-8 grid h-10 grid-cols-[164px_minmax(0,1fr)_164px] select-none items-center ${titlebarSurfaceClassName} [-webkit-user-select:none]`}
       style={titlebarGridStyle}
       aria-label={label("app.windowDragRegion")}
-      data-tauri-drag-region
+      data-tauri-drag-region={titleContent ? undefined : true}
     >
       {renderMarkdownFilesDivider()}
       <div
