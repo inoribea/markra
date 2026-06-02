@@ -340,6 +340,7 @@ describe("Markra workspace", () => {
   });
 
   it("places browser titlebar tabs over the editor area when runtime disables native window chrome", async () => {
+    mockedResolveDesktopPlatform.mockReturnValue("windows");
     configureAppRuntime({
       ...createDefaultAppRuntime(),
       features: {
@@ -349,6 +350,9 @@ describe("Markra workspace", () => {
         pandoc: true,
         s3ImageUpload: true,
         updater: true
+      },
+      platform: {
+        resolveDesktopPlatform: () => "windows"
       }
     });
     mockedGetStoredWorkspaceState.mockResolvedValue({
@@ -374,9 +378,11 @@ describe("Markra workspace", () => {
     expect(screen.getByRole("complementary", { name: "Markdown file tree" })).toHaveAttribute("aria-hidden", "false");
     expect(screen.getByRole("tab", { name: /browser\.md/ })).toBeInTheDocument();
     expect(container.querySelector(".native-titlebar")).toHaveStyle({
-      gridTemplateColumns: "auto minmax(0, 1fr) auto",
+      gridTemplateColumns: "minmax(0,1fr) 164px",
       left: "289px"
     });
+    expect(container.querySelector(".windows-titlebar-actions")).toBeInTheDocument();
+    expect(container.querySelector(".titlebar-spacer")).not.toBeInTheDocument();
     expect(container.querySelector(".document-tabs-drag-spacer")).not.toBeInTheDocument();
     expect(container.querySelector(".native-title-slot")?.getAttribute("style") ?? "").not.toContain("margin-left");
   });
@@ -1544,7 +1550,7 @@ describe("Markra workspace", () => {
     expect(mockedListNativeMarkdownFilesForPath).toHaveBeenCalledWith(mockFolderPath);
   });
 
-  it("opens a markdown folder from the Windows titlebar open button", async () => {
+  it("opens a markdown folder from the Windows file tree header", async () => {
     mockedResolveDesktopPlatform.mockReturnValue("windows");
     mockedOpenNativeMarkdownFolder.mockResolvedValue({
       path: mockFolderPath,
@@ -1557,8 +1563,8 @@ describe("Markra workspace", () => {
 
     renderApp();
 
-    fireEvent.click(screen.getByRole("button", { name: "Open Markdown or Folder" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Open Folder..." }));
+    fireEvent.click(screen.getByRole("button", { name: "Toggle file list" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open Folder" }));
 
     expect(await screen.findByRole("complementary", { name: "Markdown file tree" })).toBeInTheDocument();
     expect(screen.getAllByText("vault").length).toBeGreaterThan(0);
@@ -1576,7 +1582,7 @@ describe("Markra workspace", () => {
     });
   });
 
-  it("starts the titlebar folder picker in the same click turn when the document is clean", async () => {
+  it("starts the Windows file tree folder picker in the same click turn when the document is clean", async () => {
     mockedResolveDesktopPlatform.mockReturnValue("windows");
     let resolveFolder: ((folder: { name: string; path: string }) => unknown) | null = null;
     mockedOpenNativeMarkdownFolder.mockReturnValue(new Promise((resolve) => {
@@ -1585,8 +1591,8 @@ describe("Markra workspace", () => {
 
     renderApp();
 
-    fireEvent.click(screen.getByRole("button", { name: "Open Markdown or Folder" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Open Folder..." }));
+    fireEvent.click(screen.getByRole("button", { name: "Toggle file list" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open Folder" }));
 
     expect(mockedOpenNativeMarkdownFolder).toHaveBeenCalledTimes(1);
 

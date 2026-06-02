@@ -133,6 +133,38 @@ describe("NativeTitleBar", () => {
     expect(titleSlot?.getAttribute("style") ?? "").not.toContain("transform");
   });
 
+  it("uses the Windows titlebar layout for web chrome when the runtime resolves Windows", () => {
+    const { container } = render(
+      <NativeTitleBar
+        aiAgentOpen={false}
+        dirty={false}
+        documentName="Draft.md"
+        markdownFilesOpen
+        markdownFilesWidth={288}
+        nativeWindowChrome={false}
+        platform="windows"
+        theme="light"
+        titleContent={(
+          <div role="tablist" aria-label="Open documents">
+            <button type="button" role="tab" aria-selected="true">Draft.md</button>
+          </div>
+        )}
+        onToggleAiAgent={() => {}}
+        onOpenMarkdown={() => {}}
+        onSaveMarkdown={() => {}}
+        onToggleMarkdownFiles={() => {}}
+        onToggleTheme={() => {}}
+      />
+    );
+
+    expect(container.querySelector(".native-titlebar")).toHaveStyle({
+      gridTemplateColumns: "minmax(0,1fr) 164px",
+      left: "289px"
+    });
+    expect(container.querySelector(".windows-titlebar-actions")).toBeInTheDocument();
+    expect(container.querySelector(".titlebar-spacer")).not.toBeInTheDocument();
+  });
+
   it("keeps macOS titlebar tabs clear of transformed actions before the AI panel", () => {
     const { container } = render(
       <NativeTitleBar
@@ -230,6 +262,35 @@ describe("NativeTitleBar", () => {
     expect(toggleSourceMode).toHaveBeenCalledTimes(1);
   });
 
+  it("reserves AI panel width for Windows titlebar tabs when file actions shift left", () => {
+    const { container } = render(
+      <NativeTitleBar
+        aiAgentOpen
+        aiAgentWidth={384}
+        dirty={false}
+        documentName="Draft.md"
+        markdownFilesOpen={false}
+        platform="windows"
+        theme="light"
+        titleContent={(
+          <div role="tablist" aria-label="Open documents">
+            <button type="button" role="tab" aria-selected="true">Draft.md</button>
+          </div>
+        )}
+        onToggleAiAgent={() => {}}
+        onOpenMarkdown={() => {}}
+        onSaveMarkdown={() => {}}
+        onToggleMarkdownFiles={() => {}}
+        onToggleTheme={() => {}}
+      />
+    );
+
+    expect(container.querySelector(".native-titlebar")).toHaveStyle({
+      gridTemplateColumns: "minmax(0,1fr) 548px"
+    });
+    expect(container.querySelector(".windows-titlebar-actions")).toHaveStyle({ transform: "translateX(-384px)" });
+  });
+
   it("keeps compact Windows file actions clear of the Markra AI panel", () => {
     const { container } = render(
       <NativeTitleBar
@@ -251,7 +312,7 @@ describe("NativeTitleBar", () => {
     );
 
     expect(container.querySelector(".windows-titlebar-actions")).toHaveStyle({ transform: "translateX(-384px)" });
-    expect(screen.getByRole("button", { name: "Open Markdown or Folder" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open Markdown or Folder" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Toggle Markra AI" })).toBeInTheDocument();
   });
 
@@ -653,7 +714,7 @@ describe("NativeTitleBar", () => {
     expect(screen.queryByRole("heading", { name: "Draft.md" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Toggle file list" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "New file" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Open Markdown or Folder" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open Markdown or Folder" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save Markdown" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Switch to dark theme" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Toggle Markra AI" })).toBeInTheDocument();
@@ -662,7 +723,7 @@ describe("NativeTitleBar", () => {
     expect(container.querySelector(".windows-titlebar-actions")).toHaveStyle({ transform: "translateX(-384px)" });
   });
 
-  it("offers separate Markdown file and folder actions from the Windows open button", () => {
+  it("omits the Markdown or folder picker from the Windows titlebar", () => {
     const openMarkdown = vi.fn();
     const openMarkdownFolder = vi.fn();
     render(
@@ -682,15 +743,10 @@ describe("NativeTitleBar", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Open Markdown or Folder" }));
-
-    expect(screen.getByRole("menu", { name: "Open Markdown or Folder" })).toHaveClass("right-0");
-    expect(screen.getByRole("menuitem", { name: "Open Markdown File" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("menuitem", { name: "Open Folder..." }));
-
-    expect(openMarkdownFolder).toHaveBeenCalledTimes(1);
-    expect(openMarkdown).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Open Markdown or Folder" })).not.toBeInTheDocument();
     expect(screen.queryByRole("menu", { name: "Open Markdown or Folder" })).not.toBeInTheDocument();
+    expect(openMarkdown).not.toHaveBeenCalled();
+    expect(openMarkdownFolder).not.toHaveBeenCalled();
   });
 
   it("keeps the unified Markdown or folder picker on macOS", () => {
