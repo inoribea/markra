@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { GlobalSearchPanel } from "./GlobalSearchPanel";
 import type { WorkspaceSearchResult } from "../lib/workspace-search";
 
@@ -54,6 +54,7 @@ describe("GlobalSearchPanel", () => {
         query="alpha"
         results={[result, secondResult, otherFileResult]}
         searchedFileCount={2}
+        truncated={false}
         unreadableFileCount={0}
         onCaseSensitiveChange={() => {}}
         onClose={() => {}}
@@ -93,6 +94,7 @@ describe("GlobalSearchPanel", () => {
         query="alpha"
         results={[result]}
         searchedFileCount={1}
+        truncated={false}
         unreadableFileCount={0}
         onCaseSensitiveChange={() => {}}
         onClose={() => {}}
@@ -119,6 +121,7 @@ describe("GlobalSearchPanel", () => {
         query=""
         results={[]}
         searchedFileCount={0}
+        truncated={false}
         unreadableFileCount={0}
         onCaseSensitiveChange={setCaseSensitive}
         onClose={() => {}}
@@ -130,5 +133,99 @@ describe("GlobalSearchPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Case sensitive" }));
 
     expect(setCaseSensitive).toHaveBeenCalledWith(true);
+  });
+
+  it("shows recent workspace searches before entering a query", () => {
+    const selectRecentQuery = vi.fn();
+    render(
+      <GlobalSearchPanel
+        caseSensitive={false}
+        language="en"
+        loading={false}
+        query=""
+        recentQueries={["alpha", "beta"]}
+        results={[]}
+        searchedFileCount={2}
+        truncated={false}
+        unreadableFileCount={0}
+        onCaseSensitiveChange={() => {}}
+        onClose={() => {}}
+        onOpenResult={() => {}}
+        onQueryChange={() => {}}
+        onRecentQuerySelect={selectRecentQuery}
+      />
+    );
+
+    const recentSearches = screen.getByRole("list", { name: "Recent searches" });
+
+    fireEvent.click(within(recentSearches).getByRole("button", { name: "Search for beta" }));
+
+    expect(selectRecentQuery).toHaveBeenCalledWith("beta");
+    expect(screen.queryByText("Type to search")).not.toBeInTheDocument();
+  });
+
+  it("shows when workspace search results are truncated", () => {
+    render(
+      <GlobalSearchPanel
+        caseSensitive={false}
+        language="en"
+        loading={false}
+        query="alpha"
+        results={[result]}
+        searchedFileCount={1}
+        truncated={true}
+        unreadableFileCount={0}
+        onCaseSensitiveChange={() => {}}
+        onClose={() => {}}
+        onOpenResult={() => {}}
+        onQueryChange={() => {}}
+      />
+    );
+
+    expect(screen.getByText("First 1 results")).toBeInTheDocument();
+  });
+
+  it("virtualizes large result groups instead of rendering every group", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const manyResults = Array.from({ length: 80 }, (_, index) => ({
+        ...result,
+        file: {
+          name: `note-${index}.md`,
+          path: `/mock-vault/note-${index}.md`,
+          relativePath: `note-${index}.md`
+        },
+        id: `/mock-vault/note-${index}.md:0`
+      })) satisfies WorkspaceSearchResult[];
+
+      render(
+        <GlobalSearchPanel
+          caseSensitive={false}
+          language="en"
+          loading={false}
+          query="alpha"
+          results={manyResults}
+          searchedFileCount={80}
+          truncated={false}
+          unreadableFileCount={0}
+          onCaseSensitiveChange={() => {}}
+          onClose={() => {}}
+          onOpenResult={() => {}}
+          onQueryChange={() => {}}
+        />
+      );
+
+      expect(screen.getByText("note-0.md")).toBeInTheDocument();
+
+      await act(async () => {
+        vi.runAllTimers();
+      });
+
+      expect(screen.queryByText("note-79.md")).not.toBeInTheDocument();
+      expect(screen.getAllByRole("group", { name: /search results$/u }).length).toBeLessThan(40);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

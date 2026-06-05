@@ -134,6 +134,7 @@ import {
   saveNativeHtmlFile,
   saveNativePandocFile,
   saveNativePdfFile,
+  searchNativeMarkdownFilesForPath,
   showNativePandocSetup,
   writeNativeMarkdownTemplateFile,
   type NativeMarkdownFolderFile,
@@ -156,9 +157,12 @@ const sideDocumentPaneKeyboardStepPercent = 5;
 const sideDocumentMainPanePercentMin = 35;
 const sideDocumentMainPanePercentMax = 70;
 const defaultSideDocumentMainPanePercent = 50;
+export const globalSearchDebounceMs = 180;
+const globalSearchRecentQueryLimit = 8;
 const emptyWorkspaceSearchResponse: WorkspaceSearchResponse = {
   results: [],
   searchedFileCount: 0,
+  truncated: false,
   unreadableFileCount: 0
 };
 
@@ -303,6 +307,22 @@ function restoreElementScrollTop(element: HTMLElement, scrollTop: number) {
   }
 }
 
+function nextGlobalSearchRecentQueries(current: string[], query: string) {
+  const normalizedQuery = query.trim();
+  if (!normalizedQuery) return current;
+
+  const normalizedQueryKey = normalizedQuery.toLowerCase();
+  const nextQueries = [
+    normalizedQuery,
+    ...current.filter((currentQuery) => currentQuery.toLowerCase() !== normalizedQueryKey)
+  ].slice(0, globalSearchRecentQueryLimit);
+
+  return current.length === nextQueries.length
+    && current.every((currentQuery, index) => currentQuery === nextQueries[index])
+    ? current
+    : nextQueries;
+}
+
 export default function App() {
   const isSettingsRoute = useSettingsWindowRoute();
 
@@ -361,6 +381,7 @@ function WorkspaceApp() {
   const [globalSearchCaseSensitive, setGlobalSearchCaseSensitive] = useState(false);
   const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
   const [globalSearchResponse, setGlobalSearchResponse] = useState<WorkspaceSearchResponse>(emptyWorkspaceSearchResponse);
+  const [globalSearchRecentQueries, setGlobalSearchRecentQueries] = useState<string[]>([]);
   const [documentHistoryOpen, setDocumentHistoryOpen] = useState(false);
   const [documentHistoryRefreshKey, setDocumentHistoryRefreshKey] = useState(0);
   const [splitVisualPanePercent, setSplitVisualPanePercent] = useState(defaultSplitVisualPanePercent);
@@ -509,6 +530,7 @@ function WorkspaceApp() {
     resizing: fileTreeResizing,
     resize: resizeFileTree,
     endResize: endFileTreeResize,
+    sourcePath: fileTreeSourcePath,
     rootNameForDocument,
     setRootFromMarkdownFilePath,
     startResize: startFileTreeResize,
@@ -1833,12 +1855,18 @@ function WorkspaceApp() {
   }, []);
   const handleGlobalSearchClose = useCallback(() => {
     setGlobalSearchOpen(false);
+    setGlobalSearchQuery("");
+    setGlobalSearchLoading(false);
+    setGlobalSearchResponse(emptyWorkspaceSearchResponse);
   }, []);
   const handleGlobalSearchQueryChange = useCallback((query: string) => {
     setGlobalSearchQuery(query);
   }, []);
   const handleGlobalSearchCaseSensitiveChange = useCallback((caseSensitive: boolean) => {
     setGlobalSearchCaseSensitive(caseSensitive);
+  }, []);
+  const handleGlobalSearchRecentQuerySelect = useCallback((query: string) => {
+    setGlobalSearchQuery(query);
   }, []);
   const handleGlobalSearchResultOpen = useCallback(async (result: WorkspaceSearchResult) => {
     setGlobalSearchOpen(false);
@@ -1853,51 +1881,115 @@ function WorkspaceApp() {
   }, [documentSearchOpen, globalSearchCaseSensitive, globalSearchQuery, handleOpenTreeFile]);
   useEffect(() => {
     const query = globalSearchQuery.trim();
-    if (!globalSearchOpen || !query) {
+    const fileTreeSearchableFileCount = fileTreeFiles.filter((file) =>
+      file.kind !== "asset" && file.kind !== "folder"
+    ).length;
+
+    if (!globalSearchOpen) {
       setGlobalSearchLoading(false);
       setGlobalSearchResponse({
         ...emptyWorkspaceSearchResponse,
-        searchedFileCount: fileTreeFiles.filter((file) => file.kind !== "asset" && file.kind !== "folder").length
+        searchedFileCount: fileTreeSearchableFileCount
       });
       return;
     }
 
+    if (!query) {
+      let active = true;
+
+      setGlobalSearchLoading(false);
+      setGlobalSearchResponse({
+        ...emptyWorkspaceSearchResponse,
+        searchedFileCount: fileTreeSearchableFileCount
+      });
+
+      const loadNativeFileCount = async () => {
+        if (!fileTreeSourcePath) return null;
+
+        return searchNativeMarkdownFilesForPath({
+          caseSensitive: globalSearchCaseSensitive,
+          currentDocument: null,
+          path: fileTreeSourcePath,
+          query: ""
+        }).catch(() => null);
+      };
+
+      loadNativeFileCount().then((response) => {
+        if (!active || !response) return;
+
+        setGlobalSearchResponse({
+          ...emptyWorkspaceSearchResponse,
+          searchedFileCount: response.searchedFileCount,
+          truncated: response.truncated,
+          unreadableFileCount: response.unreadableFileCount
+        });
+      });
+
+      return () => {
+        active = false;
+      };
+    }
+
     let active = true;
     setGlobalSearchLoading(true);
+    setGlobalSearchRecentQueries((current) => nextGlobalSearchRecentQueries(current, query));
 
-    searchWorkspaceFiles(fileTreeFiles, query, {
-      caseSensitive: globalSearchCaseSensitive,
-      readFile: async (path) => {
-        if (!activeImageFile && document.path === path) {
+    const runGlobalSearch = async () => {
+      const nativeResponse = fileTreeSourcePath
+        ? await searchNativeMarkdownFilesForPath({
+            caseSensitive: globalSearchCaseSensitive,
+            currentDocument: !activeImageFile && document.path
+              ? {
+                  content: document.content,
+                  path: document.path
+                }
+              : null,
+            path: fileTreeSourcePath,
+            query
+          }).catch(() => null)
+        : null;
+      if (nativeResponse) return nativeResponse;
+
+      return searchWorkspaceFiles(fileTreeFiles, query, {
+        caseSensitive: globalSearchCaseSensitive,
+        readFile: async (path) => {
+          if (!activeImageFile && document.path === path) {
+            return {
+              content: document.content,
+              path
+            };
+          }
+
+          const file = await readNativeMarkdownFile(path);
+
           return {
-            content: document.content,
-            path
+            content: file.content,
+            path: file.path
           };
         }
+      });
+    };
 
-        const file = await readNativeMarkdownFile(path);
-
-        return {
-          content: file.content,
-          path: file.path
-        };
-      }
-    }).then((response) => {
-      if (active) setGlobalSearchResponse(response);
-    }).catch(() => {
-      if (active) setGlobalSearchResponse(emptyWorkspaceSearchResponse);
-    }).finally(() => {
-      if (active) setGlobalSearchLoading(false);
-    });
+    const searchTimeout = window.setTimeout(() => {
+      runGlobalSearch().then((response) => {
+        if (active) setGlobalSearchResponse(response);
+      }).catch(() => {
+        if (active) setGlobalSearchResponse(emptyWorkspaceSearchResponse);
+      }).finally(() => {
+        if (active) setGlobalSearchLoading(false);
+      });
+    }, globalSearchDebounceMs);
 
     return () => {
       active = false;
+      window.clearTimeout(searchTimeout);
     };
   }, [
     activeImageFile,
     document.content,
     document.path,
     fileTreeFiles,
+    fileTreeSourcePath,
     globalSearchCaseSensitive,
     globalSearchOpen,
     globalSearchQuery
@@ -3097,13 +3189,16 @@ function WorkspaceApp() {
                   language={appLanguage.language}
                   loading={globalSearchLoading}
                   query={globalSearchQuery}
+                  recentQueries={globalSearchRecentQueries}
                   results={globalSearchResponse.results}
                   searchedFileCount={globalSearchResponse.searchedFileCount}
+                  truncated={globalSearchResponse.truncated}
                   unreadableFileCount={globalSearchResponse.unreadableFileCount}
                   onCaseSensitiveChange={handleGlobalSearchCaseSensitiveChange}
                   onClose={handleGlobalSearchClose}
                   onOpenResult={handleGlobalSearchResultOpen}
                   onQueryChange={handleGlobalSearchQueryChange}
+                  onRecentQuerySelect={handleGlobalSearchRecentQuerySelect}
                 />
               ) : null}
               {documentSearchOpen && documentSearchAvailable ? (
