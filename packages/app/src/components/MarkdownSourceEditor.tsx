@@ -1,13 +1,8 @@
-import {
-  Fragment,
-  useEffect,
-  useRef,
-  type CSSProperties,
-  type ChangeEvent,
-  type ReactNode,
-  type Ref,
-  type UIEvent
-} from "react";
+import { useEffect, useMemo, useRef, type CSSProperties, type Ref, type UIEvent } from "react";
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
+import { Annotation, Compartment, EditorSelection, EditorState, Transaction, type Extension, type Range } from "@codemirror/state";
+import { Decoration, EditorView } from "@codemirror/view";
+import { minimalSetup } from "codemirror";
 import { parseMarkdownCalloutMarker, t, type AppLanguage, type SearchRange } from "@markra/shared";
 import {
   editorContentWidthPixels,
@@ -18,7 +13,7 @@ import {
 import type { ExtendedSyntaxPreferences } from "../lib/settings/app-settings";
 import { EditorWidthResizer } from "./EditorWidthResizer";
 
-type MarkdownSourceEditorProps = {
+export type MarkdownSourceEditorProps = {
   autoFocus?: boolean;
   bodyFontSize?: number;
   content: string;
@@ -41,137 +36,56 @@ type MarkdownSourceEditorProps = {
   topInset?: "none" | "tabs" | "titlebar";
 };
 
+const externalSourceUpdate = Annotation.define<boolean>();
+
 type FenceState = {
   marker: "`" | "~" | null;
 };
 
-type MarkdownSourceHighlightOptions = {
-  githubAlerts: boolean;
-};
-
-function renderMarkdownSourceHighlight(content: string, options: MarkdownSourceHighlightOptions) {
-  const lines = content.split("\n");
-  const fenceState: FenceState = { marker: null };
-
-  return lines.map((line, index) => (
-    <Fragment key={`line-${index}`}>
-      {renderMarkdownSourceLine(line, index, fenceState, options)}
-      {index < lines.length - 1 ? "\n" : null}
-    </Fragment>
-  ));
+function markdownSourceContentAttributes(label: string, readOnly: boolean): Extension {
+  return EditorView.contentAttributes.of({
+    "aria-label": label,
+    "aria-multiline": "true",
+    "aria-readonly": readOnly ? "true" : "false",
+    "data-language": "markdown",
+    role: "textbox",
+    spellcheck: "false"
+  });
 }
 
-function renderMarkdownSourceLine(
-  line: string,
-  lineIndex: number,
-  fenceState: FenceState,
-  options: MarkdownSourceHighlightOptions
-): ReactNode {
-  const fenceMatch = line.match(/^(\s*)(`{3,}|~{3,})(.*)$/u);
-  if (fenceMatch && (!fenceState.marker || fenceMatch[2]!.startsWith(fenceState.marker))) {
-    const [, indent = "", fence = "", info = ""] = fenceMatch;
-    fenceState.marker = fenceState.marker ? null : fence[0] === "~" ? "~" : "`";
+function clampSearchRange(match: SearchRange, documentLength: number) {
+  const from = Math.max(0, Math.min(documentLength, match.from));
+  const to = Math.max(from, Math.min(documentLength, match.to));
 
-    return (
-      <>
-        {indent ? <span className="markdown-source-token-muted">{indent}</span> : null}
-        <span className="markdown-source-token-code-fence">{fence}</span>
-        {info ? <span className="markdown-source-token-code-info">{info}</span> : null}
-      </>
-    );
-  }
-
-  if (fenceState.marker) {
-    return <span className="markdown-source-token-code">{line}</span>;
-  }
-
-  const headingMatch = line.match(/^(#{1,6})(\s.*)?$/u);
-  if (headingMatch) {
-    return (
-      <>
-        <span className="markdown-source-token-heading-marker">{headingMatch[1]}</span>
-        {headingMatch[2] ? <span className="markdown-source-token-heading">{headingMatch[2]}</span> : null}
-      </>
-    );
-  }
-
-  const blockquoteMatch = line.match(/^(\s*>+)(\s.*)?$/u);
-  if (blockquoteMatch) {
-    const calloutContent = blockquoteMatch[2] ?? "";
-    const calloutPrefixMatch = /^(\s*)(.*)$/u.exec(calloutContent);
-    const calloutMarker = options.githubAlerts ? parseMarkdownCalloutMarker(calloutPrefixMatch?.[2] ?? "") : null;
-    if (calloutMarker && calloutPrefixMatch) {
-      const [, prefix = "", content = ""] = calloutPrefixMatch;
-      const markerIndex = content.indexOf(calloutMarker.source);
-      const afterMarker = content.slice(markerIndex + calloutMarker.source.length);
-
-      return (
-        <>
-          <span className="markdown-source-token-quote-marker">{blockquoteMatch[1]}</span>
-          {prefix ? <span className="markdown-source-token-muted">{prefix}</span> : null}
-          {markerIndex > 0 ? renderInlineMarkdownSource(content.slice(0, markerIndex), lineIndex) : null}
-          <span className="markdown-source-token-callout">{calloutMarker.source}</span>
-          {afterMarker ? renderInlineMarkdownSource(afterMarker, lineIndex) : null}
-        </>
-      );
-    }
-
-    return (
-      <>
-        <span className="markdown-source-token-quote-marker">{blockquoteMatch[1]}</span>
-        {blockquoteMatch[2] ? renderInlineMarkdownSource(blockquoteMatch[2], lineIndex) : null}
-      </>
-    );
-  }
-
-  const listMatch = line.match(/^(\s*)([-*+]|\d+[.)])(\s+.*)?$/u);
-  if (listMatch) {
-    return (
-      <>
-        {listMatch[1] ? <span className="markdown-source-token-muted">{listMatch[1]}</span> : null}
-        <span className="markdown-source-token-list-marker">{listMatch[2]}</span>
-        {listMatch[3] ? renderInlineMarkdownSource(listMatch[3], lineIndex) : null}
-      </>
-    );
-  }
-
-  const ruleMatch = line.match(/^(\s*)([-*_])(?:\s*\2){2,}\s*$/u);
-  if (ruleMatch) {
-    return (
-      <>
-        {ruleMatch[1] ? <span className="markdown-source-token-muted">{ruleMatch[1]}</span> : null}
-        <span className="markdown-source-token-rule">{line.slice(ruleMatch[1]!.length)}</span>
-      </>
-    );
-  }
-
-  return renderInlineMarkdownSource(line, lineIndex);
+  return { from, to };
 }
 
-function renderInlineMarkdownSource(text: string, lineIndex: number) {
-  const tokens: ReactNode[] = [];
-  const tokenPattern = /(!?\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+?\*\*|__[^_]+?__|\*[^*\s][^*]*\*|_[^_\s][^_]*_)/gu;
-  let offset = 0;
+function markdownSourceSearchExtension(matches: SearchRange[] = [], activeIndex = -1): Extension {
+  return EditorView.decorations.compute(["doc"], (state) => {
+    const decorations = matches.flatMap((match, index) => {
+      const { from, to } = clampSearchRange(match, state.doc.length);
+      if (to <= from) return [];
 
-  for (const match of text.matchAll(tokenPattern)) {
-    const token = match[0];
-    const index = match.index ?? 0;
-    if (index > offset) tokens.push(text.slice(offset, index));
+      return Decoration.mark({
+        class: `markra-cm-source-search-match ${
+          index === activeIndex ? "markra-cm-source-search-match-current" : ""
+        }`
+      }).range(from, to);
+    });
 
-    tokens.push(
-      <span
-        className={markdownInlineTokenClassName(token)}
-        key={`line-${lineIndex}-token-${index}`}
-      >
-        {token}
-      </span>
-    );
-    offset = index + token.length;
-  }
+    return Decoration.set(decorations, true);
+  });
+}
 
-  if (offset < text.length) tokens.push(text.slice(offset));
+function addMarkdownSourceDecoration(
+  decorations: Range<Decoration>[],
+  from: number,
+  to: number,
+  className: string
+) {
+  if (to <= from) return;
 
-  return tokens;
+  decorations.push(Decoration.mark({ class: className }).range(from, to));
 }
 
 function markdownInlineTokenClassName(token: string) {
@@ -181,46 +95,159 @@ function markdownInlineTokenClassName(token: string) {
   return "markdown-source-token-emphasis";
 }
 
-function renderSourceSearchHighlights(content: string, matches: SearchRange[] = [], activeIndex = -1) {
-  if (matches.length === 0) return null;
+function addMarkdownInlineSourceDecorations(decorations: Range<Decoration>[], text: string, from: number) {
+  const tokenPattern = /(!?\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+?\*\*|__[^_]+?__|\*[^*\s][^*]*\*|_[^_\s][^_]*_)/gu;
 
-  const nodes: ReactNode[] = [];
-  let offset = 0;
-
-  matches.forEach((match, index) => {
-    const from = Math.max(0, Math.min(content.length, match.from));
-    const to = Math.max(from, Math.min(content.length, match.to));
-    if (to <= from) return;
-
-    if (from > offset) {
-      nodes.push(
-        <span className="markra-source-search-transparent" key={`text-${offset}`}>
-          {content.slice(offset, from)}
-        </span>
-      );
-    }
-
-    nodes.push(
-      <span
-        className={`markra-source-search-match ${index === activeIndex ? "markra-source-search-match-current" : ""}`}
-        data-markra-source-search-current={index === activeIndex ? "true" : undefined}
-        key={`match-${from}-${to}-${index}`}
-      >
-        {content.slice(from, to)}
-      </span>
-    );
-    offset = to;
-  });
-
-  if (offset < content.length) {
-    nodes.push(
-      <span className="markra-source-search-transparent" key={`text-${offset}`}>
-        {content.slice(offset)}
-      </span>
+  for (const match of text.matchAll(tokenPattern)) {
+    const token = match[0];
+    const index = match.index ?? 0;
+    addMarkdownSourceDecoration(
+      decorations,
+      from + index,
+      from + index + token.length,
+      markdownInlineTokenClassName(token)
     );
   }
+}
 
-  return nodes;
+function markdownSourceSyntaxExtension(githubAlertsEnabled: boolean): Extension {
+  return EditorView.decorations.compute(["doc"], (state) => {
+    const decorations: Range<Decoration>[] = [];
+    const fenceState: FenceState = { marker: null };
+
+    for (let lineNumber = 1; lineNumber <= state.doc.lines; lineNumber += 1) {
+      const line = state.doc.line(lineNumber);
+      const fenceMatch = /^(\s*)(`{3,}|~{3,})(.*)$/u.exec(line.text);
+      if (fenceMatch && (!fenceState.marker || fenceMatch[2]!.startsWith(fenceState.marker))) {
+        const [, indent = "", fence = "", info = ""] = fenceMatch;
+        const fenceFrom = line.from + indent.length;
+        addMarkdownSourceDecoration(decorations, line.from, fenceFrom, "markdown-source-token-muted");
+        addMarkdownSourceDecoration(decorations, fenceFrom, fenceFrom + fence.length, "markdown-source-token-code-fence");
+        addMarkdownSourceDecoration(decorations, fenceFrom + fence.length, line.to, "markdown-source-token-code-info");
+        fenceState.marker = fenceState.marker ? null : fence[0] === "~" ? "~" : "`";
+        continue;
+      }
+
+      if (fenceState.marker) {
+        addMarkdownSourceDecoration(decorations, line.from, line.to, "markdown-source-token-code");
+        continue;
+      }
+
+      const headingMatch = /^(#{1,6})(\s.*)?$/u.exec(line.text);
+      if (headingMatch) {
+        const marker = headingMatch[1] ?? "";
+        addMarkdownSourceDecoration(decorations, line.from, line.from + marker.length, "markdown-source-token-heading-marker");
+        addMarkdownSourceDecoration(decorations, line.from + marker.length, line.to, "markdown-source-token-heading");
+        continue;
+      }
+
+      const blockquoteMatch = /^(\s*>+)(\s.*)?$/u.exec(line.text);
+      if (blockquoteMatch) {
+        const quoteMarker = blockquoteMatch[1] ?? "";
+        const quoteTo = line.from + quoteMarker.length;
+        addMarkdownSourceDecoration(decorations, line.from, quoteTo, "markdown-source-token-quote-marker");
+
+        const calloutContent = blockquoteMatch[2] ?? "";
+        const calloutStart = quoteTo;
+        const calloutPrefixMatch = /^(\s*)(.*)$/u.exec(calloutContent);
+        const calloutMarker = githubAlertsEnabled ? parseMarkdownCalloutMarker(calloutPrefixMatch?.[2] ?? "") : null;
+        if (calloutMarker && calloutPrefixMatch) {
+          const [, prefix = "", content = ""] = calloutPrefixMatch;
+          const contentStart = calloutStart + prefix.length;
+          const markerIndex = content.indexOf(calloutMarker.source);
+          if (markerIndex < 0) {
+            addMarkdownInlineSourceDecorations(decorations, calloutContent, calloutStart);
+            continue;
+          }
+
+          const markerFrom = contentStart + markerIndex;
+          if (markerIndex > 0) addMarkdownInlineSourceDecorations(decorations, content.slice(0, markerIndex), contentStart);
+          addMarkdownSourceDecoration(
+            decorations,
+            markerFrom,
+            markerFrom + calloutMarker.source.length,
+            "markdown-source-token-callout"
+          );
+          addMarkdownInlineSourceDecorations(
+            decorations,
+            content.slice(markerIndex + calloutMarker.source.length),
+            markerFrom + calloutMarker.source.length
+          );
+        } else {
+          addMarkdownInlineSourceDecorations(decorations, calloutContent, calloutStart);
+        }
+
+        continue;
+      }
+
+      const listMatch = /^(\s*)([-*+]|\d+[.)])(\s+.*)?$/u.exec(line.text);
+      if (listMatch) {
+        const indent = listMatch[1] ?? "";
+        const marker = listMatch[2] ?? "";
+        const markerFrom = line.from + indent.length;
+        const markerTo = markerFrom + marker.length;
+        addMarkdownSourceDecoration(decorations, line.from, markerFrom, "markdown-source-token-muted");
+        addMarkdownSourceDecoration(decorations, markerFrom, markerTo, "markdown-source-token-list-marker");
+        addMarkdownInlineSourceDecorations(decorations, listMatch[3] ?? "", markerTo);
+        continue;
+      }
+
+      const ruleMatch = /^(\s*)([-*_])(?:\s*\2){2,}\s*$/u.exec(line.text);
+      if (ruleMatch) {
+        const indent = ruleMatch[1] ?? "";
+        const ruleFrom = line.from + indent.length;
+        addMarkdownSourceDecoration(decorations, line.from, ruleFrom, "markdown-source-token-muted");
+        addMarkdownSourceDecoration(decorations, ruleFrom, line.to, "markdown-source-token-rule");
+        continue;
+      }
+
+      addMarkdownInlineSourceDecorations(decorations, line.text, line.from);
+    }
+
+    return Decoration.set(decorations, true);
+  });
+}
+
+function markdownSourceTheme(): Extension {
+  return EditorView.theme({
+    "&": {
+      backgroundColor: "transparent",
+      color: "var(--text-primary)",
+      fontSize: "0.94em",
+      minHeight: "calc(100vh - 176px)"
+    },
+    "&.cm-editor": {
+      height: "auto"
+    },
+    "&.cm-focused": {
+      outline: "none"
+    },
+    ".cm-activeLine": {
+      backgroundColor: "transparent"
+    },
+    ".cm-content": {
+      caretColor: "var(--accent)",
+      minHeight: "calc(100vh - 176px)",
+      padding: "0",
+      whiteSpace: "pre-wrap",
+      wordBreak: "break-word"
+    },
+    ".cm-cursor": {
+      borderLeftColor: "var(--accent)"
+    },
+    ".cm-line": {
+      padding: "0"
+    },
+    ".cm-scroller": {
+      fontFamily:
+        'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+      lineHeight: "inherit",
+      overflow: "visible"
+    },
+    ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
+      backgroundColor: "color-mix(in srgb, var(--accent) 22%, transparent)"
+    }
+  });
 }
 
 export function MarkdownSourceEditor({
@@ -245,20 +272,22 @@ export function MarkdownSourceEditor({
   scrollRef,
   topInset = "titlebar"
 }: MarkdownSourceEditorProps) {
-  const sourceLayerRef = useRef<HTMLDivElement | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorContainerRef = useRef<HTMLDivElement | null>(null);
+  const initialContentRef = useRef(content);
+  const onChangeRef = useRef(onChange);
+  const viewRef = useRef<EditorView | null>(null);
+  const contentAttributesCompartmentRef = useRef(new Compartment());
+  const editableCompartmentRef = useRef(new Compartment());
+  const searchCompartmentRef = useRef(new Compartment());
+  const syntaxCompartmentRef = useRef(new Compartment());
   const resolvedContentWidth = contentWidthPx ?? editorContentWidthPixels[contentWidth];
   const githubAlertsEnabled = extendedSyntax?.githubAlerts ?? true;
+  const sourceLabel = t(language, "app.markdownSource");
   const paperStyle = {
     fontSize: `${bodyFontSize}px`,
     lineHeight,
     maxWidth: `${resolvedContentWidth}px`
   } satisfies CSSProperties;
-  const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    if (readOnly) return;
-
-    onChange(event.currentTarget.value);
-  };
   const topInsetClassName =
     topInset === "tabs"
       ? "pt-24 max-[900px]:pt-20"
@@ -267,15 +296,120 @@ export function MarkdownSourceEditor({
         : "pt-6 max-[900px]:pt-5";
 
   useEffect(() => {
-    const activeMatch = searchMatches[searchActiveIndex];
-    if (!activeMatch) return;
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
-    textareaRef.current?.setSelectionRange(activeMatch.from, activeMatch.to);
-    const currentMatch = sourceLayerRef.current?.querySelector('[data-markra-source-search-current="true"]');
-    if (currentMatch instanceof HTMLElement && typeof currentMatch.scrollIntoView === "function") {
-      currentMatch.scrollIntoView({ block: "center", inline: "nearest" });
+  const extensions = useMemo(
+    () => [
+      minimalSetup,
+      markdown({
+        base: markdownLanguage,
+        codeLanguages: []
+      }),
+      EditorView.lineWrapping,
+      contentAttributesCompartmentRef.current.of(markdownSourceContentAttributes(sourceLabel, readOnly)),
+      editableCompartmentRef.current.of(EditorView.editable.of(!readOnly)),
+      searchCompartmentRef.current.of(markdownSourceSearchExtension(searchMatches, searchActiveIndex)),
+      syntaxCompartmentRef.current.of(markdownSourceSyntaxExtension(githubAlertsEnabled)),
+      EditorView.updateListener.of((update) => {
+        if (!update.docChanged) return;
+        if (update.transactions.some((transaction) => transaction.annotation(externalSourceUpdate))) return;
+
+        onChangeRef.current(update.state.doc.toString());
+      }),
+      markdownSourceTheme()
+    ],
+    [githubAlertsEnabled, sourceLabel]
+  );
+
+  useEffect(() => {
+    const container = editorContainerRef.current;
+
+    if (!container || viewRef.current) return;
+
+    const view = new EditorView({
+      parent: container,
+      state: EditorState.create({
+        doc: initialContentRef.current,
+        extensions
+      })
+    });
+
+    viewRef.current = view;
+    if (autoFocus) view.focus();
+
+    return () => {
+      view.destroy();
+      viewRef.current = null;
+    };
+  }, [autoFocus, extensions]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+
+    view.dispatch({
+      effects: [
+        contentAttributesCompartmentRef.current.reconfigure(markdownSourceContentAttributes(sourceLabel, readOnly)),
+        editableCompartmentRef.current.reconfigure(EditorView.editable.of(!readOnly))
+      ]
+    });
+  }, [readOnly, sourceLabel]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+
+    const currentContent = view.state.doc.toString();
+    if (currentContent === content) return;
+
+    const cursor = Math.min(view.state.selection.main.head, content.length);
+    view.dispatch({
+      annotations: [externalSourceUpdate.of(true), Transaction.addToHistory.of(false)],
+      changes: {
+        from: 0,
+        insert: content,
+        to: view.state.doc.length
+      },
+      selection: EditorSelection.cursor(cursor)
+    });
+  }, [content]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+
+    const effects = searchCompartmentRef.current.reconfigure(
+      markdownSourceSearchExtension(searchMatches, searchActiveIndex)
+    );
+    const activeMatch = searchMatches[searchActiveIndex];
+    if (!activeMatch) {
+      view.dispatch({ effects });
+      return;
     }
+
+    const { from, to } = clampSearchRange(activeMatch, view.state.doc.length);
+    view.dispatch({
+      effects,
+      scrollIntoView: true,
+      selection: EditorSelection.range(from, to)
+    });
   }, [searchActiveIndex, searchMatches]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+
+    view.dispatch({
+      effects: syntaxCompartmentRef.current.reconfigure(markdownSourceSyntaxExtension(githubAlertsEnabled))
+    });
+  }, [githubAlertsEnabled]);
+
+  useEffect(() => {
+    if (!autoFocus) return;
+
+    viewRef.current?.focus();
+  }, [autoFocus]);
 
   return (
     <section
@@ -299,32 +433,12 @@ export function MarkdownSourceEditor({
           onResizeEnd={onContentWidthResizeEnd}
           onResizeStart={onContentWidthResizeStart}
         />
-        <div className="markdown-source-layer relative min-h-[calc(100vh-176px)]" ref={sourceLayerRef}>
-          <pre
-            className="markdown-source-highlight pointer-events-none m-0 min-h-[calc(100vh-176px)] whitespace-pre-wrap wrap-break-word border-0 bg-transparent p-0 font-mono text-[0.94em] leading-[inherit] tracking-normal"
-            aria-hidden="true"
-          >
-            <code>{renderMarkdownSourceHighlight(content, { githubAlerts: githubAlertsEnabled })}</code>
-          </pre>
-          {searchMatches.length > 0 ? (
-            <pre
-              className="markra-source-search-layer pointer-events-none absolute inset-0 m-0 min-h-[calc(100vh-176px)] whitespace-pre-wrap wrap-break-word border-0 bg-transparent p-0 font-mono text-[0.94em] leading-[inherit] tracking-normal"
-              aria-hidden="true"
-            >
-              <code>{renderSourceSearchHighlights(content, searchMatches, searchActiveIndex)}</code>
-            </pre>
-          ) : null}
-          <textarea
-            className="markdown-source-input absolute inset-0 block h-full min-h-full w-full resize-none overflow-hidden border-0 bg-transparent p-0 font-mono text-[0.94em] leading-[inherit] tracking-normal text-transparent outline-none placeholder:text-(--text-secondary) focus:outline-none"
-            aria-label={t(language, "app.markdownSource")}
-            autoFocus={autoFocus}
-            readOnly={readOnly}
-            ref={textareaRef}
-            spellCheck={false}
-            value={content}
-            onChange={handleChange}
-          />
-        </div>
+        <div
+          className="markdown-source-editor min-h-[calc(100vh-176px)]"
+          data-language="markdown"
+          data-testid="markdown-source-editor"
+          ref={editorContainerRef}
+        />
       </article>
     </section>
   );
